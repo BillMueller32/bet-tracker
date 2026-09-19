@@ -13,8 +13,9 @@ export default async function EditBetPage({
   const supabase = await createClient();
   const { data: bet } = await supabase
     .from("bets")
-    .select("*")
+    .select("*, bet_legs(*)")
     .eq("id", id)
+    .order("leg_order", { referencedTable: "bet_legs" })
     .single();
 
   if (!bet) notFound();

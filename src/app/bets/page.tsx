@@ -20,8 +20,9 @@ export default async function BetsPage() {
   const supabase = await createClient();
   const { data: bets, error } = await supabase
     .from("bets")
-    .select("*")
-    .order("placed_at", { ascending: false });
+    .select("*, bet_legs(*)")
+    .order("placed_at", { ascending: false })
+    .order("leg_order", { referencedTable: "bet_legs" });
 
   const sortedBets = bets ? sortBets(bets) : [];
 

@@ -4,10 +4,21 @@ import { useState } from "react";
 import {
   BET_TYPES,
   BET_TYPES_BY_SPORT,
+  MULTI_LEG_BET_TYPES,
   SPORTS,
   STATUSES,
   type Bet,
+  type BetLeg,
 } from "@/lib/bets/constants";
+
+const EMPTY_LEG: BetLeg = {
+  sport: "",
+  event_name: "",
+  participant: null,
+  selection: "",
+  line: null,
+  odds: null,
+};
 
 type BetFormProps = {
   // Native form action (create/edit pages): submitting navigates/redirects
@@ -36,10 +47,35 @@ export function BetForm({
 }: BetFormProps) {
   const [sport, setSport] = useState(defaultValues?.sport ?? "");
   const [betType, setBetType] = useState(defaultValues?.bet_type ?? "");
+  const [legs, setLegs] = useState<BetLeg[]>(defaultValues?.bet_legs ?? []);
 
   const availableBetTypes = sport
     ? BET_TYPES_BY_SPORT[sport as keyof typeof BET_TYPES_BY_SPORT]
     : BET_TYPES.map((t) => t.value);
+
+  const isMultiLeg = (MULTI_LEG_BET_TYPES as readonly string[]).includes(
+    betType,
+  );
+
+  function handleBetTypeChange(value: string) {
+    setBetType(value);
+    if (
+      (MULTI_LEG_BET_TYPES as readonly string[]).includes(value) &&
+      legs.length === 0
+    ) {
+      setLegs([{ ...EMPTY_LEG }, { ...EMPTY_LEG }]);
+    }
+  }
+
+  function updateLeg(index: number, patch: Partial<BetLeg>) {
+    setLegs((prev) =>
+      prev.map((leg, i) => (i === index ? { ...leg, ...patch } : leg)),
+    );
+  }
+
+  function removeLeg(index: number) {
+    setLegs((prev) => prev.filter((_, i) => i !== index));
+  }
 
   return (
     <form
@@ -103,7 +139,7 @@ export function BetForm({
           name="bet_type"
           required
           value={betType}
-          onChange={(e) => setBetType(e.target.value)}
+          onChange={(e) => handleBetTypeChange(e.target.value)}
           className={inputClass}
         >
           <option value="" disabled>
@@ -119,50 +155,168 @@ export function BetForm({
         </select>
       </div>
 
-      <div>
-        <label className={labelClass} htmlFor="participant">
-          Player / team (if applicable)
-        </label>
-        <input
-          id="participant"
-          name="participant"
-          type="text"
-          placeholder="Patrick Mahomes"
-          defaultValue={defaultValues?.participant ?? ""}
-          className={inputClass}
-        />
-      </div>
+      {!isMultiLeg && (
+        <div>
+          <label className={labelClass} htmlFor="participant">
+            Player / team (if applicable)
+          </label>
+          <input
+            id="participant"
+            name="participant"
+            type="text"
+            placeholder="Patrick Mahomes"
+            defaultValue={defaultValues?.participant ?? ""}
+            className={inputClass}
+          />
+        </div>
+      )}
 
       <div>
         <label className={labelClass} htmlFor="selection">
-          Selection
+          {isMultiLeg ? "Overall description" : "Selection"}
         </label>
         <input
           id="selection"
           name="selection"
           type="text"
           required
-          placeholder="Bills -3.5, Over 48.5, Mahomes Over 275.5 pass yds"
+          placeholder={
+            isMultiLeg
+              ? "3-Team Teaser, 10pt"
+              : "Bills -3.5, Over 48.5, Mahomes Over 275.5 pass yds"
+          }
           defaultValue={defaultValues?.selection}
           className={inputClass}
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      {isMultiLeg && (
         <div>
-          <label className={labelClass} htmlFor="line">
-            Line
-          </label>
-          <input
-            id="line"
-            name="line"
-            type="number"
-            step="any"
-            placeholder="-3.5"
-            defaultValue={defaultValues?.line ?? ""}
-            className={inputClass}
-          />
+          <input type="hidden" name="leg_count" value={legs.length} />
+          <div className="mb-2 flex items-center justify-between">
+            <span className={labelClass}>Legs</span>
+            <button
+              type="button"
+              onClick={() => setLegs((prev) => [...prev, { ...EMPTY_LEG }])}
+              className="text-xs text-neutral-400 hover:text-neutral-200"
+            >
+              + Add leg
+            </button>
+          </div>
+          <div className="space-y-3">
+            {legs.map((leg, i) => (
+              <div
+                key={i}
+                className="space-y-2 rounded-md border border-neutral-700 p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-neutral-500">Leg {i + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeLeg(i)}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <select
+                  name={`leg_sport_${i}`}
+                  required
+                  value={leg.sport}
+                  onChange={(e) => updateLeg(i, { sport: e.target.value })}
+                  className={inputClass}
+                >
+                  <option value="" disabled>
+                    Select a sport
+                  </option>
+                  {SPORTS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  name={`leg_event_name_${i}`}
+                  type="text"
+                  required
+                  placeholder="Event, e.g. Chiefs @ Bills"
+                  value={leg.event_name}
+                  onChange={(e) =>
+                    updateLeg(i, { event_name: e.target.value })
+                  }
+                  className={inputClass}
+                />
+                <input
+                  name={`leg_participant_${i}`}
+                  type="text"
+                  placeholder="Player / team (if applicable)"
+                  value={leg.participant ?? ""}
+                  onChange={(e) =>
+                    updateLeg(i, { participant: e.target.value })
+                  }
+                  className={inputClass}
+                />
+                <input
+                  name={`leg_selection_${i}`}
+                  type="text"
+                  required
+                  placeholder="Selection, e.g. Bills -3.5"
+                  value={leg.selection}
+                  onChange={(e) =>
+                    updateLeg(i, { selection: e.target.value })
+                  }
+                  className={inputClass}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    name={`leg_line_${i}`}
+                    type="number"
+                    step="any"
+                    placeholder="Line"
+                    value={leg.line ?? ""}
+                    onChange={(e) =>
+                      updateLeg(i, {
+                        line: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    className={inputClass}
+                  />
+                  <input
+                    name={`leg_odds_${i}`}
+                    type="number"
+                    placeholder="Odds (if shown)"
+                    value={leg.odds ?? ""}
+                    onChange={(e) =>
+                      updateLeg(i, {
+                        odds: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      )}
+
+      <div className={isMultiLeg ? "grid grid-cols-2 gap-3" : "grid grid-cols-3 gap-3"}>
+        {!isMultiLeg && (
+          <div>
+            <label className={labelClass} htmlFor="line">
+              Line
+            </label>
+            <input
+              id="line"
+              name="line"
+              type="number"
+              step="any"
+              placeholder="-3.5"
+              defaultValue={defaultValues?.line ?? ""}
+              className={inputClass}
+            />
+          </div>
+        )}
         <div>
           <label className={labelClass} htmlFor="odds">
             Odds

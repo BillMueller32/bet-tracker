@@ -22,10 +22,14 @@ export const BET_TYPES = [
   { value: "outright", label: "Outright (e.g. tournament winner)" },
   { value: "match", label: "Match winner" },
   { value: "parlay", label: "Parlay" },
+  { value: "teaser", label: "Teaser" },
   { value: "other", label: "Other" },
 ] as const;
 
 export type BetType = (typeof BET_TYPES)[number]["value"];
+
+// Bundle multiple picks (each in its own bet_legs row) under one stake/payout.
+export const MULTI_LEG_BET_TYPES: BetType[] = ["parlay", "teaser"];
 
 const TEAM_SPORT_BET_TYPES: BetType[] = [
   "moneyline",
@@ -34,6 +38,7 @@ const TEAM_SPORT_BET_TYPES: BetType[] = [
   "player_prop",
   "team_prop",
   "parlay",
+  "teaser",
   "other",
 ];
 
@@ -61,6 +66,16 @@ export const STATUSES = [
 
 export type BetStatus = (typeof STATUSES)[number]["value"];
 
+export type BetLeg = {
+  id?: string;
+  sport: Sport | string;
+  event_name: string;
+  participant: string | null;
+  selection: string;
+  line: number | null;
+  odds: number | null;
+};
+
 export type Bet = {
   id: string;
   created_at: string;
@@ -79,4 +94,6 @@ export type Bet = {
   result_value: string | null;
   settled_at: string | null;
   notes: string | null;
+  screenshot_path?: string | null;
+  bet_legs?: BetLeg[];
 };

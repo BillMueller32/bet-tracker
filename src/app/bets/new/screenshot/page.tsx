@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { uploadAndExtractBet, createBetFromReview } from "@/app/bets/actions";
 import { BetForm } from "@/components/bet-form";
-import type { Bet } from "@/lib/bets/constants";
+import type { Bet, BetLeg } from "@/lib/bets/constants";
 
 type QueueItem = {
   previewUrl: string;
@@ -59,10 +59,27 @@ export default function ScreenshotUploadPage() {
       formData.append("screenshot", file);
       try {
         const result = await uploadAndExtractBet(formData);
+        const { legs, ...rest } = result.extracted;
+        // The AI extraction is constrained to our sport/bet_type enums by
+        // the tool schema (extract.ts), but that guarantee isn't visible
+        // to TypeScript from this plain object literal.
+        const extracted = {
+          ...rest,
+          bet_legs: legs?.map(
+            (leg): BetLeg => ({
+              sport: leg.sport,
+              event_name: leg.event_name,
+              participant: leg.participant ?? null,
+              selection: leg.selection,
+              line: leg.line ?? null,
+              odds: leg.odds ?? null,
+            }),
+          ),
+        };
         results.push({
           previewUrl: URL.createObjectURL(file),
           screenshotPath: result.screenshotPath,
-          extracted: result.extracted as Partial<Bet>,
+          extracted: extracted as Partial<Bet>,
         });
       } catch (e) {
         setErrors((prev) => [

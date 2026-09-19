@@ -38,12 +38,69 @@ function parseBetForm(formData: FormData) {
   };
 }
 
+// Parlay/teaser legs are submitted as indexed fields (leg_sport_0,
+// leg_event_name_0, ...) rather than a single value per key, since native
+// FormData has no nested/array structure.
+function parseLegs(formData: FormData) {
+  const legCount = Number(formData.get("leg_count") ?? 0);
+  const legs = [];
+
+  for (let i = 0; i < legCount; i++) {
+    const getString = (key: string) =>
+      (formData.get(`leg_${key}_${i}`) as string | null)?.trim() || null;
+    const sport = getString("sport");
+    const eventName = getString("event_name");
+    const selection = getString("selection");
+    if (!sport || !eventName || !selection) continue;
+
+    const line = getString("line");
+    const odds = getString("odds");
+    legs.push({
+      leg_order: i,
+      sport,
+      event_name: eventName,
+      participant: getString("participant"),
+      selection,
+      line: line === null ? null : Number(line),
+      odds: odds === null ? null : Number(odds),
+    });
+  }
+
+  return legs;
+}
+
+async function saveLegs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  betId: string,
+  legs: ReturnType<typeof parseLegs>,
+) {
+  const { error: deleteError } = await supabase
+    .from("bet_legs")
+    .delete()
+    .eq("bet_id", betId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (legs.length === 0) return;
+
+  const { error: insertError } = await supabase
+    .from("bet_legs")
+    .insert(legs.map((leg) => ({ ...leg, bet_id: betId })));
+  if (insertError) throw new Error(insertError.message);
+}
+
 export async function createBet(formData: FormData) {
   const supabase = await createClient();
   const payload = parseBetForm(formData);
+  const legs = parseLegs(formData);
 
-  const { error } = await supabase.from("bets").insert(payload);
+  const { data, error } = await supabase
+    .from("bets")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+
+  await saveLegs(supabase, data.id, legs);
 
   revalidatePath("/bets");
   redirect("/bets");
@@ -52,9 +109,12 @@ export async function createBet(formData: FormData) {
 export async function updateBet(id: string, formData: FormData) {
   const supabase = await createClient();
   const payload = parseBetForm(formData);
+  const legs = parseLegs(formData);
 
   const { error } = await supabase.from("bets").update(payload).eq("id", id);
   if (error) throw new Error(error.message);
+
+  await saveLegs(supabase, id, legs);
 
   revalidatePath("/bets");
   redirect("/bets");
@@ -121,9 +181,16 @@ export async function uploadAndExtractBet(formData: FormData) {
 export async function createBetFromReview(formData: FormData) {
   const supabase = await createClient();
   const payload = parseBetForm(formData);
+  const legs = parseLegs(formData);
 
-  const { error } = await supabase.from("bets").insert(payload);
+  const { data, error } = await supabase
+    .from("bets")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
+
+  await saveLegs(supabase, data.id, legs);
 
   revalidatePath("/bets");
 }

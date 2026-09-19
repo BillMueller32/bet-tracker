@@ -9,6 +9,15 @@ const SUPPORTED_MEDIA_TYPES = [
 ] as const;
 type SupportedMediaType = (typeof SUPPORTED_MEDIA_TYPES)[number];
 
+export type ExtractedLeg = {
+  sport: string;
+  event_name: string;
+  participant?: string;
+  selection: string;
+  line?: number;
+  odds?: number;
+};
+
 export type ExtractedBet = {
   sport: string;
   event_name: string;
@@ -18,7 +27,18 @@ export type ExtractedBet = {
   line?: number;
   odds?: number;
   stake?: number;
+  // Only present for parlay/teaser bets: one entry per leg.
+  legs?: ExtractedLeg[];
 };
+
+// Teaser tickets often show payout as "stake/to-win" (e.g. "$30/$25")
+// instead of American odds. When that's all we got, back into odds so the
+// form's required Odds field isn't left blank.
+function americanOddsFromToWin(stake: number, toWin: number): number {
+  return toWin >= stake
+    ? Math.round((toWin / stake) * 100)
+    : -Math.round((stake / toWin) * 100);
+}
 
 export async function extractBetFromImage(
   imageBase64: string,
@@ -40,7 +60,12 @@ export async function extractBetFromImage(
     throw new Error("Couldn't read bet details from this screenshot.");
   }
 
-  return toolUse.input as ExtractedBet;
+  const input = toolUse.input as ExtractedBet & { to_win?: number };
+  if (input.odds === undefined && input.to_win && input.stake) {
+    input.odds = americanOddsFromToWin(input.stake, input.to_win);
+  }
+
+  return input;
 }
 
 // Server Action errors are sent back to the browser through React's Flight
@@ -97,12 +122,46 @@ async function createExtraction(
               },
               odds: {
                 type: "number",
-                description: "American odds, e.g. -110 or 150.",
+                description:
+                  "American odds, e.g. -110 or 150. Omit if the screenshot only shows a stake/to-win payout instead (use to_win for that).",
               },
               stake: {
                 type: "number",
                 description:
                   "Dollar amount wagered, if visible in the screenshot.",
+              },
+              to_win: {
+                type: "number",
+                description:
+                  'Dollar profit if the bet wins, only when shown as a stake/to-win payout (e.g. "$30/$25") instead of American odds. Omit if odds is already provided.',
+              },
+              legs: {
+                type: "array",
+                description:
+                  "Only for parlay or teaser bets that bundle multiple picks into one wager: one entry per leg/pick, in the order they appear. For a bet with a single pick, omit this entirely and describe it with the sport/event_name/selection/line/odds fields above instead.",
+                items: {
+                  type: "object",
+                  properties: {
+                    sport: {
+                      type: "string",
+                      enum: SPORTS.map((s) => s.value),
+                    },
+                    event_name: { type: "string" },
+                    participant: { type: "string" },
+                    selection: {
+                      type: "string",
+                      description:
+                        'What this leg is betting on, e.g. "Bills -3.5" or "Over 48.5".',
+                    },
+                    line: { type: "number" },
+                    odds: {
+                      type: "number",
+                      description:
+                        "This leg's individual odds, if shown separately from the combined bet odds.",
+                    },
+                  },
+                  required: ["sport", "event_name", "selection"],
+                },
               },
             },
             required: ["sport", "event_name", "bet_type", "selection"],
@@ -124,7 +183,7 @@ async function createExtraction(
             },
             {
               type: "text",
-              text: "Extract the bet details from this bet slip screenshot.",
+              text: "Extract the bet details from this bet slip screenshot. If it's a parlay or teaser bundling multiple picks into one wager, set bet_type accordingly and list each pick as its own entry in legs.",
             },
           ],
         },
