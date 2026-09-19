@@ -66,27 +66,41 @@ export async function deleteBet(id: string) {
 // yet — used by the screenshot review queue so the user can confirm/edit
 // each extracted bet before it's created.
 export async function uploadAndExtractBet(formData: FormData) {
-  const file = formData.get("screenshot") as File;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  // This action is called directly from client code (not a <form>), so it
+  // must never call redirect() — that control-flow signal only works
+  // cleanly for form-bound actions and otherwise corrupts the response.
+  // It also must only ever throw a plain Error: anything more complex
+  // (e.g. an SDK error carrying raw Headers) fails to serialize back to
+  // the browser and shows up there as a useless "Minified React error".
+  try {
+    const file = formData.get("screenshot") as File;
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("You're signed out — refresh the page and sign in again.");
+    }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-  const path = `${user.id}/${Date.now()}-${file.name}`;
-  const { error: uploadError } = await supabase.storage
-    .from("bet-screenshots")
-    .upload(path, buffer, { contentType: file.type });
-  if (uploadError) throw new Error(uploadError.message);
+    const path = `${user.id}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("bet-screenshots")
+      .upload(path, buffer, { contentType: file.type });
+    if (uploadError) throw new Error(uploadError.message);
 
-  const extracted = await extractBetFromImage(
-    buffer.toString("base64"),
-    file.type,
-  );
+    const extracted = await extractBetFromImage(
+      buffer.toString("base64"),
+      file.type,
+    );
 
-  return { screenshotPath: path, extracted };
+    return { screenshotPath: path, extracted };
+  } catch (err) {
+    throw new Error(
+      err instanceof Error ? err.message : "Something went wrong reading this screenshot.",
+    );
+  }
 }
 
 // Same as createBet, but doesn't redirect — the screenshot review queue
