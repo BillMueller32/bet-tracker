@@ -110,7 +110,7 @@ async function createExtraction(
               event_name: {
                 type: "string",
                 description:
-                  'The matchup or event, e.g. "Chiefs @ Bills" or "The Open Championship".',
+                  'The matchup or event, e.g. "Chiefs @ Bills" or "The Open Championship". Only describe what\'s actually shown — if the screenshot names just one team and not their opponent, use that team\'s name alone rather than inventing or guessing who they\'re playing.',
               },
               bet_type: {
                 type: "string",
@@ -168,7 +168,11 @@ async function createExtraction(
                       type: "string",
                       enum: SPORTS.map((s) => s.value),
                     },
-                    event_name: { type: "string" },
+                    event_name: {
+                      type: "string",
+                      description:
+                        "Only describe what's actually shown — if this leg only names one team and not their opponent, use that team's name alone rather than inventing who they're playing.",
+                    },
                     participant: { type: "string" },
                     selection: {
                       type: "string",

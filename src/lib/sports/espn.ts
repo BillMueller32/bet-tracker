@@ -16,6 +16,13 @@ export function sportSupportsGameSearch(sport: string): boolean {
   return sport in ESPN_PATH_BY_SPORT;
 }
 
+export type EspnEventStatus = {
+  // "pre" (not started), "in" (live), "post" (final).
+  state: "pre" | "in" | "post" | string;
+  // Human-readable, e.g. "Final", "8:45 - 3rd Qtr", "Sun, Sep 21 1:00 PM".
+  detail: string;
+};
+
 export type EspnEvent = {
   id: string;
   name: string;
@@ -27,10 +34,14 @@ export type EspnEvent = {
   // abbreviations (e.g. "TB", "PHI") rather than full team names.
   homeNames: string[];
   awayNames: string[];
+  homeScore?: string;
+  awayScore?: string;
+  status: EspnEventStatus;
 };
 
 type EspnCompetitor = {
   homeAway: "home" | "away";
+  score?: string;
   team?: {
     displayName?: string;
     shortDisplayName?: string;
@@ -43,7 +54,12 @@ type EspnApiEvent = {
   name: string;
   shortName: string;
   date: string;
-  competitions?: Array<{ competitors?: EspnCompetitor[] }>;
+  competitions?: Array<{
+    competitors?: EspnCompetitor[];
+    status?: {
+      type?: { state?: string; detail?: string; shortDetail?: string };
+    };
+  }>;
 };
 
 export async function searchEspnEvents(
@@ -64,9 +80,11 @@ export async function searchEspnEvents(
   const data = (await res.json()) as { events?: EspnApiEvent[] };
 
   return (data.events ?? []).map((event) => {
-    const competitors = event.competitions?.[0]?.competitors ?? [];
+    const competition = event.competitions?.[0];
+    const competitors = competition?.competitors ?? [];
     const home = competitors.find((c) => c.homeAway === "home");
     const away = competitors.find((c) => c.homeAway === "away");
+    const statusType = competition?.status?.type;
 
     return {
       id: event.id,
@@ -85,6 +103,12 @@ export async function searchEspnEvents(
         away?.team?.shortDisplayName,
         away?.team?.abbreviation,
       ].filter((n): n is string => !!n),
+      homeScore: home?.score,
+      awayScore: away?.score,
+      status: {
+        state: statusType?.state ?? "pre",
+        detail: statusType?.shortDetail ?? statusType?.detail ?? "",
+      },
     };
   });
 }

@@ -1,10 +1,34 @@
 import Link from "next/link";
 import { MULTI_LEG_BET_TYPES, type Bet } from "@/lib/bets/constants";
 import { formatOdds, formatStake, statusBadgeClass } from "@/lib/bets/format";
+import type { EspnEvent } from "@/lib/sports/espn";
 
-export function BetCard({ bet }: { bet: Bet }) {
+function GameStatusLine({ event }: { event: EspnEvent }) {
+  const isLive = event.status.state === "in";
+  const hasScore = event.homeScore !== undefined && event.awayScore !== undefined;
+
+  return (
+    <p className={`text-xs ${isLive ? "text-red-400" : "text-neutral-500"}`}>
+      {isLive && "● "}
+      {event.status.detail}
+      {hasScore &&
+        ` — ${event.awayTeam} ${event.awayScore}, ${event.homeTeam} ${event.homeScore}`}
+    </p>
+  );
+}
+
+export function BetCard({
+  bet,
+  liveStatuses,
+}: {
+  bet: Bet;
+  liveStatuses?: Map<string, EspnEvent>;
+}) {
   const legs = bet.bet_legs ?? [];
   const isMultiLeg = MULTI_LEG_BET_TYPES.includes(bet.bet_type);
+  const topGame = bet.external_event_id
+    ? liveStatuses?.get(bet.external_event_id)
+    : undefined;
 
   return (
     <Link
@@ -30,19 +54,34 @@ export function BetCard({ bet }: { bet: Bet }) {
       <p className="text-sm font-medium text-neutral-100">{bet.event_name}</p>
 
       {isMultiLeg && legs.length > 0 ? (
-        <ul className="mt-1 space-y-0.5">
-          {legs.map((leg, i) => (
-            <li key={leg.id ?? i} className="text-sm text-neutral-300">
-              {leg.participant ? `${leg.participant} — ` : ""}
-              {leg.selection}
-            </li>
-          ))}
+        <ul className="mt-1 space-y-1">
+          {legs.map((leg, i) => {
+            const legGame = leg.external_event_id
+              ? liveStatuses?.get(leg.external_event_id)
+              : undefined;
+            return (
+              <li key={leg.id ?? i}>
+                <p className="text-sm text-neutral-300">
+                  {leg.participant ? `${leg.participant} — ` : ""}
+                  {leg.selection}
+                </p>
+                {legGame && <GameStatusLine event={legGame} />}
+              </li>
+            );
+          })}
         </ul>
       ) : (
-        <p className="text-sm text-neutral-300">
-          {bet.participant ? `${bet.participant} — ` : ""}
-          {bet.selection}
-        </p>
+        <>
+          <p className="text-sm text-neutral-300">
+            {bet.participant ? `${bet.participant} — ` : ""}
+            {bet.selection}
+          </p>
+          {topGame && (
+            <div className="mt-0.5">
+              <GameStatusLine event={topGame} />
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-2 flex items-center gap-3 text-xs text-neutral-500">

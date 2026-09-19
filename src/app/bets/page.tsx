@@ -2,6 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BetCard } from "@/components/bet-card";
 import type { Bet } from "@/lib/bets/constants";
+import {
+  fetchLiveStatuses,
+  type LiveStatusRequest,
+} from "@/lib/sports/live-status";
 
 const ACTIVE_STATUSES = new Set(["pending", "live"]);
 
@@ -16,6 +20,35 @@ function sortBets(bets: Bet[]): Bet[] {
   });
 }
 
+function collectLiveStatusRequests(bets: Bet[]): LiveStatusRequest[] {
+  const requests: LiveStatusRequest[] = [];
+
+  for (const bet of bets) {
+    if (!ACTIVE_STATUSES.has(bet.status)) continue;
+
+    const legs = bet.bet_legs ?? [];
+    if (legs.length > 0) {
+      for (const leg of legs) {
+        if (leg.external_event_id && leg.event_start) {
+          requests.push({
+            sport: leg.sport,
+            eventDate: leg.event_start.slice(0, 10),
+            externalEventId: leg.external_event_id,
+          });
+        }
+      }
+    } else if (bet.external_event_id && bet.event_start) {
+      requests.push({
+        sport: bet.sport,
+        eventDate: bet.event_start.slice(0, 10),
+        externalEventId: bet.external_event_id,
+      });
+    }
+  }
+
+  return requests;
+}
+
 export default async function BetsPage() {
   const supabase = await createClient();
   const { data: bets, error } = await supabase
@@ -25,6 +58,9 @@ export default async function BetsPage() {
     .order("leg_order", { referencedTable: "bet_legs" });
 
   const sortedBets = bets ? sortBets(bets) : [];
+  const liveStatuses = await fetchLiveStatuses(
+    collectLiveStatusRequests(sortedBets),
+  );
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -62,7 +98,7 @@ export default async function BetsPage() {
         <ul className="space-y-2">
           {sortedBets.map((bet) => (
             <li key={bet.id}>
-              <BetCard bet={bet} />
+              <BetCard bet={bet} liveStatuses={liveStatuses} />
             </li>
           ))}
         </ul>
