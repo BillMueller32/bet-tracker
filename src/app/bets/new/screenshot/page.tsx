@@ -70,6 +70,8 @@ export default function ScreenshotUploadPage() {
             (leg): BetLeg => ({
               sport: leg.sport,
               event_name: leg.event_name,
+              event_start: leg.event_start ?? null,
+              external_event_id: leg.external_event_id ?? null,
               participant: leg.participant ?? null,
               selection: leg.selection,
               line: leg.line ?? null,

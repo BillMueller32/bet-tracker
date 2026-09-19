@@ -4,8 +4,13 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { extractBetFromImage } from "@/lib/bets/extract";
-import { searchEspnEvents } from "@/lib/sports/espn";
+import { extractBetFromImage, type ExtractedBet } from "@/lib/bets/extract";
+import {
+  findBestMatch,
+  searchEspnEvents,
+  sportSupportsGameSearch,
+  type EspnEvent,
+} from "@/lib/sports/espn";
 
 const EXTENSION_BY_MEDIA_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -136,6 +141,59 @@ export async function deleteBet(id: string) {
   redirect("/bets");
 }
 
+// Auto-links a single sport/date/team-hints combo to a real ESPN game,
+// best-effort — a failed or empty match just leaves the bet unlinked so
+// the user can search manually instead. Shares a per-request cache so a
+// multi-leg bet with several picks on the same date doesn't refetch the
+// same day's scoreboard repeatedly.
+async function autoLinkGame(
+  cache: Map<string, EspnEvent[]>,
+  sport: string | undefined,
+  eventDate: string | undefined,
+  teamHints: (string | undefined)[],
+): Promise<{ event_start: string; external_event_id: string } | null> {
+  if (!sport || !eventDate || !sportSupportsGameSearch(sport)) return null;
+
+  const cacheKey = `${sport}:${eventDate}`;
+  let events = cache.get(cacheKey);
+  if (!events) {
+    try {
+      events = await searchEspnEvents(sport, eventDate);
+    } catch {
+      events = [];
+    }
+    cache.set(cacheKey, events);
+  }
+
+  const match = findBestMatch(
+    events,
+    teamHints.filter((h): h is string => !!h),
+  );
+  return match ? { event_start: match.date, external_event_id: match.id } : null;
+}
+
+async function autoLinkExtracted(extracted: ExtractedBet): Promise<void> {
+  const cache = new Map<string, EspnEvent[]>();
+
+  if (extracted.legs && extracted.legs.length > 0) {
+    for (const leg of extracted.legs) {
+      const match = await autoLinkGame(cache, leg.sport, leg.event_date, [
+        leg.participant,
+        leg.event_name,
+      ]);
+      if (match) Object.assign(leg, match);
+    }
+  } else {
+    const match = await autoLinkGame(
+      cache,
+      extracted.sport,
+      extracted.event_date,
+      [extracted.participant, extracted.event_name],
+    );
+    if (match) Object.assign(extracted, match);
+  }
+}
+
 // Uploads one screenshot and reads its bet details, without saving a bet
 // yet — used by the screenshot review queue so the user can confirm/edit
 // each extracted bet before it's created.
@@ -173,6 +231,14 @@ export async function uploadAndExtractBet(formData: FormData) {
       buffer.toString("base64"),
       file.type,
     );
+
+    // Best-effort: a failure here shouldn't fail the whole screenshot
+    // upload, since the bet is still perfectly usable unlinked.
+    try {
+      await autoLinkExtracted(extracted);
+    } catch {
+      // ignore — user can still link manually in the review step
+    }
 
     return { screenshotPath: path, extracted };
   } catch (err) {

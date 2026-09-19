@@ -16,6 +16,11 @@ export type ExtractedLeg = {
   selection: string;
   line?: number;
   odds?: number;
+  // Scheduled game date (YYYY-MM-DD), used to auto-match this leg to a
+  // real game. Not the same as when the bet was placed.
+  event_date?: string;
+  event_start?: string;
+  external_event_id?: string;
 };
 
 export type ExtractedBet = {
@@ -31,6 +36,9 @@ export type ExtractedBet = {
   legs?: ExtractedLeg[];
   // Only present for teaser bets: points each leg's line was adjusted by.
   teaser_points?: number;
+  event_date?: string;
+  event_start?: string;
+  external_event_id?: string;
 };
 
 // Teaser tickets often show payout as "stake/to-win" (e.g. "$30/$25")
@@ -134,6 +142,11 @@ async function createExtraction(
                 description:
                   "Dollar amount wagered, if visible in the screenshot.",
               },
+              event_date: {
+                type: "string",
+                description:
+                  'The scheduled date of the game/event itself (not when the bet was placed), as YYYY-MM-DD, if shown — e.g. from "Sep-19-26 04:15 PM" extract "2026-09-19". Omit if no date is visible.',
+              },
               to_win: {
                 type: "number",
                 description:
@@ -168,6 +181,11 @@ async function createExtraction(
                       description:
                         "This leg's individual odds, if shown separately from the combined bet odds.",
                     },
+                    event_date: {
+                      type: "string",
+                      description:
+                        'This leg\'s scheduled game date, as YYYY-MM-DD, e.g. from "Sep-19-26 04:15 PM" extract "2026-09-19". Omit if not visible.',
+                    },
                   },
                   required: ["sport", "event_name", "selection"],
                 },
@@ -192,7 +210,7 @@ async function createExtraction(
             },
             {
               type: "text",
-              text: "Extract the bet details from this bet slip screenshot. If it's a parlay or teaser bundling multiple picks into one wager, set bet_type accordingly and list each pick as its own entry in legs.",
+              text: `Extract the bet details from this bet slip screenshot. If it's a parlay or teaser bundling multiple picks into one wager, set bet_type accordingly and list each pick as its own entry in legs. Today's date is ${new Date().toISOString().slice(0, 10)}, for resolving any dates shown without a year.`,
             },
           ],
         },
