@@ -31,6 +31,7 @@ function parseBetForm(formData: FormData) {
     odds: getNumber("odds")!,
     stake: getNumber("stake")!,
     notes: getString("notes"),
+    teaser_points: getNumber("teaser_points"),
     ...(getString("status") ? { status: getString("status") } : {}),
     ...(getString("screenshot_path")
       ? { screenshot_path: getString("screenshot_path") }

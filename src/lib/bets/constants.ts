@@ -95,5 +95,8 @@ export type Bet = {
   settled_at: string | null;
   notes: string | null;
   screenshot_path?: string | null;
+  // Only meaningful when bet_type is 'teaser': how many points each leg's
+  // line was adjusted by (e.g. 6, 7, 10).
+  teaser_points?: number | null;
   bet_legs?: BetLeg[];
 };

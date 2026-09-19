@@ -29,6 +29,8 @@ export type ExtractedBet = {
   stake?: number;
   // Only present for parlay/teaser bets: one entry per leg.
   legs?: ExtractedLeg[];
+  // Only present for teaser bets: points each leg's line was adjusted by.
+  teaser_points?: number;
 };
 
 // Teaser tickets often show payout as "stake/to-win" (e.g. "$30/$25")
@@ -136,6 +138,11 @@ async function createExtraction(
                 type: "number",
                 description:
                   'Dollar profit if the bet wins, only when shown as a stake/to-win payout (e.g. "$30/$25") instead of American odds. Omit if odds is already provided.',
+              },
+              teaser_points: {
+                type: "number",
+                description:
+                  'Only for teaser bets: how many points each leg\'s line was adjusted by, e.g. 10 from "10 PT" or "10-Point Teaser". If the ticket header lists different point values per sport (e.g. "FB 10 PT, NBA 7 PT"), use the value for the sport that matches this ticket\'s actual legs.',
               },
               legs: {
                 type: "array",

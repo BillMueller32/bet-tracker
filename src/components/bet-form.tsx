@@ -190,6 +190,23 @@ export function BetForm({
         />
       </div>
 
+      {betType === "teaser" && (
+        <div>
+          <label className={labelClass} htmlFor="teaser_points">
+            Teaser points
+          </label>
+          <input
+            id="teaser_points"
+            name="teaser_points"
+            type="number"
+            step="any"
+            placeholder="10"
+            defaultValue={defaultValues?.teaser_points ?? ""}
+            className={inputClass}
+          />
+        </div>
+      )}
+
       {isMultiLeg && (
         <div>
           <input type="hidden" name="leg_count" value={legs.length} />

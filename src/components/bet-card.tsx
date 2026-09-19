@@ -13,7 +13,13 @@ export function BetCard({ bet }: { bet: Bet }) {
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-          {isMultiLeg ? `${bet.sport} · ${legs.length}-leg ${bet.bet_type}` : bet.sport}
+          {isMultiLeg
+            ? `${bet.sport} · ${legs.length}-leg ${bet.bet_type}${
+                bet.bet_type === "teaser" && bet.teaser_points
+                  ? ` (${bet.teaser_points}pt)`
+                  : ""
+              }`
+            : bet.sport}
         </span>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(bet.status)}`}
