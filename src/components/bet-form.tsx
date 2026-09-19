@@ -10,10 +10,16 @@ import {
 } from "@/lib/bets/constants";
 
 type BetFormProps = {
-  action: (formData: FormData) => void;
+  // Native form action (create/edit pages): submitting navigates/redirects
+  // server-side, per Next.js's normal server action behavior.
+  action?: (formData: FormData) => void;
+  // Client-controlled submit (screenshot review queue): submitting stays
+  // on the page so the caller can advance to the next item itself.
+  onSubmit?: (formData: FormData) => void | Promise<void>;
   submitLabel: string;
-  defaultValues?: Bet;
+  defaultValues?: Partial<Bet>;
   showStatus?: boolean;
+  children?: React.ReactNode;
 };
 
 const inputClass =
@@ -22,9 +28,11 @@ const labelClass = "mb-1 block text-xs font-medium text-neutral-400";
 
 export function BetForm({
   action,
+  onSubmit,
   submitLabel,
   defaultValues,
   showStatus,
+  children,
 }: BetFormProps) {
   const [sport, setSport] = useState(defaultValues?.sport ?? "");
   const [betType, setBetType] = useState(defaultValues?.bet_type ?? "");
@@ -34,7 +42,17 @@ export function BetForm({
     : BET_TYPES.map((t) => t.value);
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      {...(onSubmit
+        ? {
+            onSubmit: (e: React.FormEvent<HTMLFormElement>) => {
+              e.preventDefault();
+              onSubmit(new FormData(e.currentTarget));
+            },
+          }
+        : { action })}
+      className="space-y-4"
+    >
       <div>
         <label className={labelClass} htmlFor="sport">
           Sport
@@ -215,6 +233,7 @@ export function BetForm({
       >
         {submitLabel}
       </button>
+      {children}
     </form>
   );
 }

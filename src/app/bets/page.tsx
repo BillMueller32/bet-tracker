@@ -29,12 +29,20 @@ export default async function BetsPage() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-neutral-100">Your bets</h1>
-        <Link
-          href="/bets/new"
-          className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900"
-        >
-          Add bet
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/bets/new/screenshot"
+            className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-100"
+          >
+            From screenshot
+          </Link>
+          <Link
+            href="/bets/new"
+            className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900"
+          >
+            Add bet
+          </Link>
+        </div>
       </div>
 
       {error && (

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { extractBetFromImage } from "@/lib/bets/extract";
 
 function parseBetForm(formData: FormData) {
   const getString = (key: string) =>
@@ -23,6 +24,9 @@ function parseBetForm(formData: FormData) {
     stake: getNumber("stake")!,
     notes: getString("notes"),
     ...(getString("status") ? { status: getString("status") } : {}),
+    ...(getString("screenshot_path")
+      ? { screenshot_path: getString("screenshot_path") }
+      : {}),
   };
 }
 
@@ -56,4 +60,43 @@ export async function deleteBet(id: string) {
 
   revalidatePath("/bets");
   redirect("/bets");
+}
+
+// Uploads one screenshot and reads its bet details, without saving a bet
+// yet — used by the screenshot review queue so the user can confirm/edit
+// each extracted bet before it's created.
+export async function uploadAndExtractBet(formData: FormData) {
+  const file = formData.get("screenshot") as File;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const path = `${user.id}/${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage
+    .from("bet-screenshots")
+    .upload(path, buffer, { contentType: file.type });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const extracted = await extractBetFromImage(
+    buffer.toString("base64"),
+    file.type,
+  );
+
+  return { screenshotPath: path, extracted };
+}
+
+// Same as createBet, but doesn't redirect — the screenshot review queue
+// calls this once per confirmed bet and advances to the next one itself.
+export async function createBetFromReview(formData: FormData) {
+  const supabase = await createClient();
+  const payload = parseBetForm(formData);
+
+  const { error } = await supabase.from("bets").insert(payload);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/bets");
 }
