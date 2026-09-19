@@ -55,6 +55,12 @@ export const BET_TYPES_BY_SPORT: Record<Sport, BetType[]> = {
   other: BET_TYPES.map((t) => t.value),
 };
 
+// Standard teaser point offerings, in the increments books actually use.
+export const TEASER_POINT_OPTIONS = Array.from(
+  { length: 10 },
+  (_, i) => 6 + i * 0.5,
+);
+
 export const STATUSES = [
   { value: "pending", label: "Pending" },
   { value: "live", label: "Live" },

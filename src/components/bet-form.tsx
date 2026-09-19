@@ -7,6 +7,7 @@ import {
   MULTI_LEG_BET_TYPES,
   SPORTS,
   STATUSES,
+  TEASER_POINT_OPTIONS,
   type Bet,
   type BetLeg,
 } from "@/lib/bets/constants";
@@ -195,15 +196,22 @@ export function BetForm({
           <label className={labelClass} htmlFor="teaser_points">
             Teaser points
           </label>
-          <input
+          <select
             id="teaser_points"
             name="teaser_points"
-            type="number"
-            step="any"
-            placeholder="10"
+            required
             defaultValue={defaultValues?.teaser_points ?? ""}
             className={inputClass}
-          />
+          >
+            <option value="" disabled>
+              Select points
+            </option>
+            {TEASER_POINT_OPTIONS.map((points) => (
+              <option key={points} value={points}>
+                {points}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
