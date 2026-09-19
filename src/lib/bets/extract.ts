@@ -105,6 +105,8 @@ async function createExtraction(
               bet_type: {
                 type: "string",
                 enum: BET_TYPES.map((t) => t.value),
+                description:
+                  'Use "teaser" (not "parlay") when the slip says "TEAS"/"Teaser" or shows a point-adjustment bonus per leg (e.g. "(B+10)", "(B+7)") — a teaser moves each leg\'s spread/total by a fixed number of points, which a plain parlay does not. Use "parlay" only when there is no such point adjustment.',
               },
               participant: {
                 type: "string",
@@ -114,7 +116,7 @@ async function createExtraction(
               selection: {
                 type: "string",
                 description:
-                  'What was bet on, in plain terms, e.g. "Bills -3.5" or "Mahomes Over 275.5 passing yards".',
+                  'What was bet on, in plain terms, e.g. "Bills -3.5" or "Mahomes Over 275.5 passing yards". For a parlay/teaser, use the ticket\'s own header/title describing it instead (e.g. "3 TEAS FB 10 PT, NBA 7 PT, CBB 6 PT" or "3-Team 10-Point Teaser") — capture that text verbatim so the points value isn\'t lost.',
               },
               line: {
                 type: "number",
