@@ -110,7 +110,7 @@ async function createExtraction(
               event_name: {
                 type: "string",
                 description:
-                  'The matchup or event, e.g. "Chiefs @ Bills" or "The Open Championship". Only describe what\'s actually shown — if the screenshot names just one team and not their opponent, use that team\'s name alone rather than inventing or guessing who they\'re playing.',
+                  'The matchup or event, e.g. "Chiefs @ Bills" or "The Open Championship". Only transcribe what\'s actually printed in the image — if the screenshot names just one team and not their opponent, use that team\'s name alone. Never guess, infer, or fill in an opponent from your own knowledge of schedules or matchups, even if you think you know who they\'re likely playing — an unverified guess is worse than leaving it out.',
               },
               bet_type: {
                 type: "string",
@@ -121,7 +121,7 @@ async function createExtraction(
               participant: {
                 type: "string",
                 description:
-                  "The specific player or team the bet is about (for props, outrights, or match bets). Omit if not applicable.",
+                  "The specific player or team the bet is about — fill this in whenever the bet names one, not just for props/outrights/match bets (e.g. also for a team spread/total/moneyline like \"TB Buccaneers -2\"). Only the name as printed; never add an opponent here.",
               },
               selection: {
                 type: "string",
@@ -171,9 +171,13 @@ async function createExtraction(
                     event_name: {
                       type: "string",
                       description:
-                        "Only describe what's actually shown — if this leg only names one team and not their opponent, use that team's name alone rather than inventing who they're playing.",
+                        "Only transcribe what's actually printed — if this leg only names one team and not their opponent, use that team's name alone. Never guess or infer an opponent from your own knowledge of schedules, even a plausible-sounding one.",
                     },
-                    participant: { type: "string" },
+                    participant: {
+                      type: "string",
+                      description:
+                        "The team/player this leg names, exactly as printed — fill this in for a team spread/total/moneyline leg too, not just props. Never add an opponent here.",
+                    },
                     selection: {
                       type: "string",
                       description:

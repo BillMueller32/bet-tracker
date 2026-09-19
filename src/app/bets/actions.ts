@@ -175,11 +175,16 @@ async function autoLinkGame(
 async function autoLinkExtracted(extracted: ExtractedBet): Promise<void> {
   const cache = new Map<string, EspnEvent[]>();
 
+  // Match on the specific team the bet names (participant), not the
+  // full event_name: a hallucinated or two-team event_name string (e.g.
+  // "TB Buccaneers @ Pittsburgh Steelers" when the real opponent wasn't
+  // actually visible) can substring-match a completely unrelated game
+  // and link it with false confidence. event_name is only a fallback
+  // for older/manual entries that never got a participant filled in.
   if (extracted.legs && extracted.legs.length > 0) {
     for (const leg of extracted.legs) {
       const match = await autoLinkGame(cache, leg.sport, leg.event_date, [
-        leg.participant,
-        leg.event_name,
+        leg.participant ?? leg.event_name,
       ]);
       if (match) Object.assign(leg, match);
     }
@@ -188,7 +193,7 @@ async function autoLinkExtracted(extracted: ExtractedBet): Promise<void> {
       cache,
       extracted.sport,
       extracted.event_date,
-      [extracted.participant, extracted.event_name],
+      [extracted.participant ?? extracted.event_name],
     );
     if (match) Object.assign(extracted, match);
   }
