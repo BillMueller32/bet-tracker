@@ -24,6 +24,7 @@ export default function ScreenshotUploadPage() {
   const [errors, setErrors] = useState<string[]>([]);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   // Paste a screenshot straight from the clipboard (e.g. a Mac
   // screenshot shortcut, which copies the image without saving a file).
@@ -96,6 +97,7 @@ export default function ScreenshotUploadPage() {
   }
 
   function advance() {
+    setSaveError("");
     if (index + 1 < queue.length) {
       setIndex((i) => i + 1);
     } else {
@@ -104,9 +106,14 @@ export default function ScreenshotUploadPage() {
   }
 
   async function handleSaveCurrent(formData: FormData) {
-    formData.set("screenshot_path", queue[index].screenshotPath);
-    await createBetFromReview(formData);
-    advance();
+    setSaveError("");
+    try {
+      formData.set("screenshot_path", queue[index].screenshotPath);
+      await createBetFromReview(formData);
+      advance();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Couldn't save this bet.");
+    }
   }
 
   const current = queue[index];
@@ -183,6 +190,11 @@ export default function ScreenshotUploadPage() {
             Reviewing {index + 1} of {queue.length} — check the fields
             against the screenshot before saving.
           </p>
+          {saveError && (
+            <p className="mb-2 rounded-md border border-red-900 bg-red-950 p-3 text-sm text-red-300">
+              {saveError}
+            </p>
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={current.previewUrl}
