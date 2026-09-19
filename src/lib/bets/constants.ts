@@ -76,6 +76,8 @@ export type BetLeg = {
   id?: string;
   sport: Sport | string;
   event_name: string;
+  event_start?: string | null;
+  external_event_id?: string | null;
   participant: string | null;
   selection: string;
   line: number | null;

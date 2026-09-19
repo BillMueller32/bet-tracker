@@ -11,6 +11,8 @@ import {
   type Bet,
   type BetLeg,
 } from "@/lib/bets/constants";
+import { GamePicker } from "@/components/game-picker";
+import type { EspnEvent } from "@/lib/sports/espn";
 
 const EMPTY_LEG: BetLeg = {
   sport: "",
@@ -49,6 +51,38 @@ export function BetForm({
   const [sport, setSport] = useState(defaultValues?.sport ?? "");
   const [betType, setBetType] = useState(defaultValues?.bet_type ?? "");
   const [legs, setLegs] = useState<BetLeg[]>(defaultValues?.bet_legs ?? []);
+  const [eventName, setEventName] = useState(defaultValues?.event_name ?? "");
+  const [eventStart, setEventStart] = useState(
+    defaultValues?.event_start ?? null,
+  );
+  const [externalEventId, setExternalEventId] = useState(
+    defaultValues?.external_event_id ?? null,
+  );
+
+  function selectGame(event: EspnEvent) {
+    setEventStart(event.date);
+    setExternalEventId(event.id);
+    if (!eventName.trim()) setEventName(event.shortName || event.name);
+  }
+
+  function clearGame() {
+    setEventStart(null);
+    setExternalEventId(null);
+  }
+
+  function selectLegGame(index: number, event: EspnEvent) {
+    updateLeg(index, {
+      event_start: event.date,
+      external_event_id: event.id,
+      ...(legs[index]?.event_name?.trim()
+        ? {}
+        : { event_name: event.shortName || event.name }),
+    });
+  }
+
+  function clearLegGame(index: number) {
+    updateLeg(index, { event_start: null, external_event_id: null });
+  }
 
   const availableBetTypes = sport
     ? BET_TYPES_BY_SPORT[sport as keyof typeof BET_TYPES_BY_SPORT]
@@ -126,9 +160,27 @@ export function BetForm({
           type="text"
           required
           placeholder="Chiefs @ Bills"
-          defaultValue={defaultValues?.event_name}
+          value={eventName}
+          onChange={(e) => setEventName(e.target.value)}
           className={inputClass}
         />
+        {!isMultiLeg && (
+          <div className="mt-2">
+            <input type="hidden" name="event_start" value={eventStart ?? ""} />
+            <input
+              type="hidden"
+              name="external_event_id"
+              value={externalEventId ?? ""}
+            />
+            <GamePicker
+              sport={sport}
+              eventStart={eventStart}
+              externalEventId={externalEventId}
+              onSelect={selectGame}
+              onClear={clearGame}
+            />
+          </div>
+        )}
       </div>
 
       <div>
@@ -270,6 +322,23 @@ export function BetForm({
                     updateLeg(i, { event_name: e.target.value })
                   }
                   className={inputClass}
+                />
+                <input
+                  type="hidden"
+                  name={`leg_event_start_${i}`}
+                  value={leg.event_start ?? ""}
+                />
+                <input
+                  type="hidden"
+                  name={`leg_external_event_id_${i}`}
+                  value={leg.external_event_id ?? ""}
+                />
+                <GamePicker
+                  sport={leg.sport}
+                  eventStart={leg.event_start ?? null}
+                  externalEventId={leg.external_event_id ?? null}
+                  onSelect={(event) => selectLegGame(i, event)}
+                  onClear={() => clearLegGame(i)}
                 />
                 <input
                   name={`leg_participant_${i}`}

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { extractBetFromImage } from "@/lib/bets/extract";
+import { searchEspnEvents } from "@/lib/sports/espn";
 
 const EXTENSION_BY_MEDIA_TYPE: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -32,6 +33,8 @@ function parseBetForm(formData: FormData) {
     stake: getNumber("stake")!,
     notes: getString("notes"),
     teaser_points: getNumber("teaser_points"),
+    event_start: getString("event_start"),
+    external_event_id: getString("external_event_id"),
     ...(getString("status") ? { status: getString("status") } : {}),
     ...(getString("screenshot_path")
       ? { screenshot_path: getString("screenshot_path") }
@@ -60,6 +63,8 @@ function parseLegs(formData: FormData) {
       leg_order: i,
       sport,
       event_name: eventName,
+      event_start: getString("event_start"),
+      external_event_id: getString("external_event_id"),
       participant: getString("participant"),
       selection,
       line: line === null ? null : Number(line),
@@ -194,4 +199,16 @@ export async function createBetFromReview(formData: FormData) {
   await saveLegs(supabase, data.id, legs);
 
   revalidatePath("/bets");
+}
+
+// Called directly from the GamePicker client component (not a <form>), so
+// same rule as uploadAndExtractBet: only ever throw a plain Error.
+export async function searchGames(sport: string, date: string) {
+  try {
+    return await searchEspnEvents(sport, date);
+  } catch (err) {
+    throw new Error(
+      err instanceof Error ? err.message : "Couldn't search for games.",
+    );
+  }
 }
