@@ -1,9 +1,17 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { extractBetFromImage } from "@/lib/bets/extract";
+
+const EXTENSION_BY_MEDIA_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
 
 function parseBetForm(formData: FormData) {
   const getString = (key: string) =>
@@ -84,7 +92,12 @@ export async function uploadAndExtractBet(formData: FormData) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    const path = `${user.id}/${Date.now()}-${file.name}`;
+    // Build a clean storage key instead of reusing the original filename —
+    // screenshot filenames (e.g. "Screenshot 2026-09-19 at 3.48.33 PM.png")
+    // contain spaces/punctuation that Supabase Storage rejects as an
+    // "Invalid key".
+    const extension = EXTENSION_BY_MEDIA_TYPE[file.type] ?? "png";
+    const path = `${user.id}/${randomUUID()}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from("bet-screenshots")
       .upload(path, buffer, { contentType: file.type });
