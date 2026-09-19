@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { uploadAndExtractBet, createBetFromReview } from "@/app/bets/actions";
@@ -23,6 +23,27 @@ export default function ScreenshotUploadPage() {
   const [index, setIndex] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Paste a screenshot straight from the clipboard (e.g. a Mac
+  // screenshot shortcut, which copies the image without saving a file).
+  useEffect(() => {
+    if (status !== "idle") return;
+
+    function handlePaste(e: ClipboardEvent) {
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (files.length === 0) return;
+      e.preventDefault();
+      const dataTransfer = new DataTransfer();
+      files.forEach((f) => dataTransfer.items.add(f));
+      handleFilesSelected(dataTransfer.files);
+    }
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [status]);
 
   async function handleFilesSelected(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
@@ -86,10 +107,27 @@ export default function ScreenshotUploadPage() {
       </h1>
 
       {status === "idle" && (
-        <div className="rounded-md border border-dashed border-neutral-700 p-6 text-center">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            handleFilesSelected(e.dataTransfer.files);
+          }}
+          className={`rounded-md border border-dashed p-6 text-center transition-colors ${
+            isDragging
+              ? "border-neutral-400 bg-neutral-900"
+              : "border-neutral-700"
+          }`}
+        >
           <p className="mb-4 text-sm text-neutral-400">
-            Choose one or more bet slip screenshots. Each one will be read
-            and queued up for you to review before saving.
+            Choose, drag in, or paste (⌘V) one or more bet slip screenshots.
+            Each one will be read and queued up for you to review before
+            saving.
           </p>
           <input
             ref={inputRef}
