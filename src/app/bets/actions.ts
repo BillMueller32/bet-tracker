@@ -40,6 +40,10 @@ function parseBetForm(formData: FormData) {
     teaser_points: getNumber("teaser_points"),
     event_start: getString("event_start"),
     external_event_id: getString("external_event_id"),
+    sportsbook: getString("sportsbook"),
+    is_free_bet: formData.get("is_free_bet") === "on",
+    cash_out_amount: getNumber("cash_out_amount"),
+    actual_profit: getNumber("actual_profit"),
     ...(getString("status") ? { status: getString("status") } : {}),
     ...(getString("screenshot_path")
       ? { screenshot_path: getString("screenshot_path") }

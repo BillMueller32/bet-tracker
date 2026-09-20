@@ -29,7 +29,19 @@ export function NavHeader() {
         <span className="text-sm font-semibold tracking-wide text-neutral-100">
           Bet Tracker
         </span>
-        <SignOutButton />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/settings"
+            className={`text-sm font-medium ${
+              isActive(pathname, "/settings")
+                ? "text-neutral-100"
+                : "text-neutral-400 hover:text-neutral-200"
+            }`}
+          >
+            Settings
+          </Link>
+          <SignOutButton />
+        </div>
       </div>
       <nav className="flex gap-1 overflow-x-auto px-4 pb-2">
         {NAV_LINKS.map((link) => {
