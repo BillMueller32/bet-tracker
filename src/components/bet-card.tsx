@@ -5,9 +5,11 @@ import {
   displayPick,
   formatOdds,
   formatStake,
+  legOutcomeTextClass,
   statusBadgeClass,
 } from "@/lib/bets/format";
 import { allLinkedGamesFinal } from "@/lib/bets/action-summary";
+import { previewLegOutcome } from "@/lib/bets/grade";
 import type { EspnEvent } from "@/lib/sports/espn";
 
 function GameStatusLine({ event }: { event: EspnEvent }) {
@@ -89,9 +91,11 @@ export function BetCard({
             const legGame = leg.external_event_id
               ? liveStatuses?.get(leg.external_event_id)
               : undefined;
+            const legOutcome =
+              isUnsettled && legGame ? previewLegOutcome(leg, legGame) : null;
             return (
               <li key={leg.id ?? i} className="py-2 first:pt-0 last:pb-0">
-                <p className="text-sm text-neutral-200">
+                <p className={`text-sm ${legOutcomeTextClass(legOutcome)}`}>
                   {displayPick(leg.participant, leg.selection)}
                 </p>
                 {legGame && <GameStatusLine event={legGame} />}

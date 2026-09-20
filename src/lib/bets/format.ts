@@ -1,3 +1,5 @@
+import type { GradeOutcome } from "@/lib/bets/grade";
+
 export function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `${odds}`;
 }
@@ -94,4 +96,17 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function statusBadgeClass(status: string): string {
   return STATUS_STYLES[status] ?? STATUS_STYLES.pending;
+}
+
+const LEG_OUTCOME_TEXT_STYLES: Record<GradeOutcome, string> = {
+  won: "text-green-400",
+  push: "text-yellow-400",
+  lost: "text-red-400",
+};
+
+// Colors a leg's pick text by its live preview outcome ("if the game
+// ended right now") — null (ungradable, e.g. a player prop, or the game
+// hasn't started) falls back to the default neutral text color.
+export function legOutcomeTextClass(outcome: GradeOutcome | null): string {
+  return outcome ? LEG_OUTCOME_TEXT_STYLES[outcome] : "text-neutral-200";
 }
