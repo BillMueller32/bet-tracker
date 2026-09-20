@@ -9,9 +9,18 @@ export type GradeResult = {
 
 type GradableFields = {
   participant: string | null;
+  event_name: string;
   selection: string;
   line: number | null;
 };
+
+// Prefer participant (should reliably be just the team's own name), but
+// fall back to event_name for older/manual entries that never got a
+// participant filled in — normalize() already strips bracketed noise
+// like "[CFB] -" so this still matches cleanly.
+function teamHint(bet: GradableFields): string {
+  return bet.participant || bet.event_name;
+}
 
 const MECHANICAL_TYPES = new Set(["moneyline", "spread", "total"]);
 
@@ -86,7 +95,7 @@ export function gradeSingleBet(
     return outcome ? { outcome, detail } : null;
   }
 
-  const side = sideOfEvent(event, bet.participant ?? "");
+  const side = sideOfEvent(event, teamHint(bet));
   if (!side) return null;
 
   if (bet.bet_type === "moneyline") {
@@ -111,7 +120,7 @@ export function gradeLeg(
 ): GradeResult | null {
   if (event.status.state !== "post") return null;
 
-  const side = sideOfEvent(event, leg.participant ?? "");
+  const side = sideOfEvent(event, teamHint(leg));
   if (!side) return null;
 
   const detail = scoreDetail(event);

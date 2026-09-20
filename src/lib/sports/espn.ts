@@ -114,7 +114,13 @@ export async function searchEspnEvents(
 }
 
 export function normalize(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  // Strip bracketed sport tags first (e.g. "[CFB] - Alabama") — noise from
+  // some bookies' own formatting, not part of the team name, and left in
+  // it would stop "Alabama" from matching "Alabama Crimson Tide" below.
+  return value
+    .replace(/\[[^\]]*\]/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function nameHits(names: string[], hint: string): boolean {
