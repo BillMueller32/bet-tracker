@@ -163,7 +163,7 @@ export default async function BetsPage() {
       )}
 
       {!error && sortedBets.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {sortedBets.map((bet) => (
             <li key={bet.id}>
               <BetCard bet={bet} liveStatuses={liveStatuses} />
