@@ -74,6 +74,29 @@ function gradeTotal(
   return total > line === isOver ? "won" : "lost";
 }
 
+function computeSingleBetOutcome(
+  bet: GradableFields & { bet_type: string },
+  event: EspnEvent,
+): GradeOutcome | null {
+  if (!MECHANICAL_TYPES.has(bet.bet_type)) return null;
+
+  if (bet.bet_type === "total") {
+    if (bet.line === null) return null;
+    const isOver = /over/i.test(bet.selection);
+    const isUnder = /under/i.test(bet.selection);
+    if (!isOver && !isUnder) return null;
+    return gradeTotal(isOver, bet.line, event);
+  }
+
+  const side = sideOfEvent(event, teamHint(bet));
+  if (!side) return null;
+
+  if (bet.bet_type === "moneyline") return gradeMoneyline(side, event);
+
+  if (bet.line === null) return null;
+  return gradeSpread(side, bet.line, event);
+}
+
 // Explicit bet_type (moneyline/spread/total) is trusted directly — never
 // auto-grades player_prop/team_prop/outright/match/other, since those
 // need real stats, not just a final score.
@@ -82,30 +105,21 @@ export function gradeSingleBet(
   event: EspnEvent,
 ): GradeResult | null {
   if (event.status.state !== "post") return null;
-  if (!MECHANICAL_TYPES.has(bet.bet_type)) return null;
+  const outcome = computeSingleBetOutcome(bet, event);
+  return outcome ? { outcome, detail: scoreDetail(event) } : null;
+}
 
-  const detail = scoreDetail(event);
-
-  if (bet.bet_type === "total") {
-    if (bet.line === null) return null;
-    const isOver = /over/i.test(bet.selection);
-    const isUnder = /under/i.test(bet.selection);
-    if (!isOver && !isUnder) return null;
-    const outcome = gradeTotal(isOver, bet.line, event);
-    return outcome ? { outcome, detail } : null;
-  }
-
-  const side = sideOfEvent(event, teamHint(bet));
-  if (!side) return null;
-
-  if (bet.bet_type === "moneyline") {
-    const outcome = gradeMoneyline(side, event);
-    return outcome ? { outcome, detail } : null;
-  }
-
-  if (bet.line === null) return null;
-  const outcome = gradeSpread(side, bet.line, event);
-  return outcome ? { outcome, detail } : null;
+// Same line-covering math as gradeSingleBet, but for a game that hasn't
+// gone final yet — "if this game ended right now." Used for an in-progress
+// projection, never for auto-settling a bet. ESPN reports "0" scores for
+// games that haven't started, so a "pre" event is explicitly excluded
+// rather than relying on the score fields alone.
+export function previewSingleBetOutcome(
+  bet: GradableFields & { bet_type: string },
+  event: EspnEvent,
+): GradeOutcome | null {
+  if (event.status.state === "pre") return null;
+  return computeSingleBetOutcome(bet, event);
 }
 
 // Parlay/teaser legs have no bet_type of their own, so the type is
@@ -114,29 +128,35 @@ export function gradeSingleBet(
 // match one of the two real teams (e.g. it names a player instead) is
 // treated as ungradable rather than guessed at, since misreading a
 // player prop as a team total/spread would silently misgrade the bet.
+function computeLegOutcome(leg: GradableFields, event: EspnEvent): GradeOutcome | null {
+  const side = sideOfEvent(event, teamHint(leg));
+  if (!side) return null;
+
+  if (leg.line === null) return gradeMoneyline(side, event);
+
+  const isOver = /over/i.test(leg.selection);
+  const isUnder = /under/i.test(leg.selection);
+  return isOver || isUnder
+    ? gradeTotal(isOver, leg.line, event)
+    : gradeSpread(side, leg.line, event);
+}
+
 export function gradeLeg(
   leg: GradableFields,
   event: EspnEvent,
 ): GradeResult | null {
   if (event.status.state !== "post") return null;
+  const outcome = computeLegOutcome(leg, event);
+  return outcome ? { outcome, detail: scoreDetail(event) } : null;
+}
 
-  const side = sideOfEvent(event, teamHint(leg));
-  if (!side) return null;
-
-  const detail = scoreDetail(event);
-
-  if (leg.line === null) {
-    const outcome = gradeMoneyline(side, event);
-    return outcome ? { outcome, detail } : null;
-  }
-
-  const isOver = /over/i.test(leg.selection);
-  const isUnder = /under/i.test(leg.selection);
-  const outcome = isOver || isUnder
-    ? gradeTotal(isOver, leg.line, event)
-    : gradeSpread(side, leg.line, event);
-
-  return outcome ? { outcome, detail } : null;
+// Live counterpart of gradeLeg — see previewSingleBetOutcome.
+export function previewLegOutcome(
+  leg: GradableFields,
+  event: EspnEvent,
+): GradeOutcome | null {
+  if (event.status.state === "pre") return null;
+  return computeLegOutcome(leg, event);
 }
 
 // Combines a parlay/teaser's leg outcomes into one bet-level result.

@@ -23,6 +23,11 @@ export default function BetsLoading() {
           <h1 className="text-lg font-semibold text-neutral-100">Your bets</h1>
         </div>
       </div>
+      <div className="mb-4 grid animate-pulse grid-cols-3 gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-lg border border-neutral-800 bg-neutral-900" />
+        ))}
+      </div>
       <ul className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
           <li key={i}>

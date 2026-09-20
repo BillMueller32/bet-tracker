@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BetCard } from "@/components/bet-card";
+import { ActionSummaryBar } from "@/components/action-summary-bar";
 import type { Bet } from "@/lib/bets/constants";
 import {
   fetchLiveStatuses,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/sports/live-status";
 import type { EspnEvent } from "@/lib/sports/espn";
 import { combineLegOutcomes, gradeLeg, gradeSingleBet } from "@/lib/bets/grade";
+import { computeActionSummary } from "@/lib/bets/action-summary";
 
 const ACTIVE_STATUSES = new Set(["pending", "live"]);
 
@@ -121,6 +123,7 @@ export default async function BetsPage() {
   if (bets) await gradePendingBets(supabase, bets, liveStatuses);
 
   const sortedBets = bets ? sortBets(bets) : [];
+  const summary = bets ? computeActionSummary(bets, liveStatuses) : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -141,6 +144,8 @@ export default async function BetsPage() {
           </Link>
         </div>
       </div>
+
+      {summary && <ActionSummaryBar summary={summary} />}
 
       {error && (
         <p className="rounded-md border border-red-900 bg-red-950 p-3 text-sm text-red-300">
