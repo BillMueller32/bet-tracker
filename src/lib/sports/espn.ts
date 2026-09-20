@@ -123,8 +123,15 @@ export function normalize(value: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// Prefix match, not "appears anywhere" — college sports are full of one
+// school's name being a literal substring of another's ("Virginia" inside
+// "West Virginia", "Ohio" inside "Ohio State", "Miami" inside "Miami
+// (OH)"...). Anywhere-containment matches both teams in those matchups and
+// forces a false ambiguity; prefix matching still catches an abbreviation
+// ("TB" prefixing "TB Buccaneers") or a full name typed against itself,
+// without also matching an unrelated team whose name happens to end with it.
 function nameHits(names: string[], hint: string): boolean {
-  return names.some((n) => n && (n.includes(hint) || hint.includes(n)));
+  return names.some((n) => n && (n.startsWith(hint) || hint.startsWith(n)));
 }
 
 // Which side of the matchup a team hint refers to, if it clearly matches
@@ -166,10 +173,8 @@ export function findBestMatch(
     let score = 0;
 
     for (const hint of normalizedHints) {
-      const hits = (names: string[]) =>
-        names.some((n) => n && (n.includes(hint) || hint.includes(n)));
-      if (hits(homeNorm)) score++;
-      if (hits(awayNorm)) score++;
+      if (nameHits(homeNorm, hint)) score++;
+      if (nameHits(awayNorm, hint)) score++;
     }
 
     if (score > 0 && (!best || score > best.score)) {

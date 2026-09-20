@@ -10,6 +10,10 @@ import type { EspnEvent } from "@/lib/sports/espn";
 export type ActionSummary = {
   inPlayCount: number;
   liveCount: number;
+  // Game(s) already final but the bet is still pending/live — it should
+  // have auto-settled and didn't (an ungradable leg, a push, or a
+  // matching miss). Surfaced separately so "live" never absorbs these.
+  needsReviewCount: number;
   atRisk: number;
   potentialPayout: number;
   projected: number;
@@ -20,6 +24,23 @@ export type ActionSummary = {
 };
 
 const ACTIVE_STATUSES = new Set(["pending", "live"]);
+
+function betEvents(bet: Bet, liveStatuses: Map<string, EspnEvent>): (EspnEvent | undefined)[] {
+  const legs = bet.bet_legs ?? [];
+  if (MULTI_LEG_BET_TYPES.includes(bet.bet_type) && legs.length > 0) {
+    return legs.map((leg) =>
+      leg.external_event_id ? liveStatuses.get(leg.external_event_id) : undefined,
+    );
+  }
+  return [bet.external_event_id ? liveStatuses.get(bet.external_event_id) : undefined];
+}
+
+// True once every linked game has gone final, regardless of whether the
+// bet itself has been settled yet — see needsReviewCount above.
+export function allLinkedGamesFinal(bet: Bet, liveStatuses: Map<string, EspnEvent>): boolean {
+  const events = betEvents(bet, liveStatuses);
+  return events.length > 0 && events.every((e) => e?.status.state === "post");
+}
 
 function outcomeProfit(outcome: "won" | "lost" | "push", bet: Bet): number {
   if (outcome === "won") return americanProfit(bet.odds, bet.stake);
@@ -37,6 +58,7 @@ export function computeActionSummary(
   const active = bets.filter((b) => ACTIVE_STATUSES.has(b.status));
 
   let liveCount = 0;
+  let needsReviewCount = 0;
   let atRisk = 0;
   let potentialPayout = 0;
   let projected = 0;
@@ -48,37 +70,33 @@ export function computeActionSummary(
 
     const legs = bet.bet_legs ?? [];
     const isMultiLeg = MULTI_LEG_BET_TYPES.includes(bet.bet_type) && legs.length > 0;
+    const events = betEvents(bet, liveStatuses);
 
+    if (events.some((e) => e?.status.state === "in")) liveCount++;
+    if (allLinkedGamesFinal(bet, liveStatuses)) needsReviewCount++;
+
+    let outcome: "won" | "lost" | "push" | null;
     if (isMultiLeg) {
-      const events = legs.map((leg) =>
-        leg.external_event_id ? liveStatuses.get(leg.external_event_id) : undefined,
-      );
-      if (events.some((e) => e && e.status.state !== "pre")) liveCount++;
-
       const previews = legs.map((leg, i) => {
         const event = events[i];
         return event ? previewLegOutcome(leg, event) : null;
       });
-      const outcome = combineLegOutcomes(previews);
-      if (outcome) {
-        projected += outcomeProfit(outcome, bet);
-        projectedCount++;
-      }
+      outcome = combineLegOutcomes(previews);
     } else {
-      const event = bet.external_event_id ? liveStatuses.get(bet.external_event_id) : undefined;
-      if (event && event.status.state !== "pre") liveCount++;
+      const event = events[0];
+      outcome = event ? previewSingleBetOutcome(bet, event) : null;
+    }
 
-      const outcome = event ? previewSingleBetOutcome(bet, event) : null;
-      if (outcome) {
-        projected += outcomeProfit(outcome, bet);
-        projectedCount++;
-      }
+    if (outcome) {
+      projected += outcomeProfit(outcome, bet);
+      projectedCount++;
     }
   }
 
   return {
     inPlayCount: active.length,
     liveCount,
+    needsReviewCount,
     atRisk,
     potentialPayout,
     projected,

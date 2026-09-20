@@ -7,6 +7,7 @@ import {
   formatStake,
   statusBadgeClass,
 } from "@/lib/bets/format";
+import { allLinkedGamesFinal } from "@/lib/bets/action-summary";
 import type { EspnEvent } from "@/lib/sports/espn";
 
 function GameStatusLine({ event }: { event: EspnEvent }) {
@@ -53,16 +54,8 @@ export function BetCard({
     : undefined;
 
   const isUnsettled = bet.status === "pending" || bet.status === "live";
-  const allGamesFinal = isMultiLeg
-    ? legs.length > 0 &&
-      legs.every((leg) => {
-        const g = leg.external_event_id
-          ? liveStatuses?.get(leg.external_event_id)
-          : undefined;
-        return g?.status.state === "post";
-      })
-    : topGame?.status.state === "post";
-  const needsReview = isUnsettled && allGamesFinal;
+  const needsReview =
+    isUnsettled && allLinkedGamesFinal(bet, liveStatuses ?? new Map());
 
   return (
     <Link

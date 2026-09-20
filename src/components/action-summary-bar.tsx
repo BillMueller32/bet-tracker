@@ -7,18 +7,15 @@ export function ActionSummaryBar({ summary }: { summary: ActionSummary }) {
 
   const hasLiveRead = summary.projectedCount > 0;
 
+  const inPlaySubParts: string[] = [];
+  if (summary.liveCount > 0) inPlaySubParts.push(`${summary.liveCount} live`);
+  if (summary.needsReviewCount > 0) inPlaySubParts.push(`${summary.needsReviewCount} final`);
+  const inPlaySub = inPlaySubParts.length > 0 ? inPlaySubParts.join(" · ") : "not started yet";
+
   return (
     <div className="mb-4 space-y-1.5">
       <div className="grid grid-cols-3 gap-2">
-        <StatTile
-          label="In play"
-          value={String(summary.inPlayCount)}
-          sub={
-            summary.liveCount > 0
-              ? `${summary.liveCount} live now`
-              : "not started yet"
-          }
-        />
+        <StatTile label="In play" value={String(summary.inPlayCount)} sub={inPlaySub} />
         <StatTile
           label="At risk"
           value={formatStake(summary.atRisk)}
@@ -34,6 +31,12 @@ export function ActionSummaryBar({ summary }: { summary: ActionSummary }) {
       {hasLiveRead && (
         <p className="text-xs text-neutral-400">
           Live P/L is an estimate based on current scores, not a final result.
+        </p>
+      )}
+      {summary.needsReviewCount > 0 && (
+        <p className="rounded-md bg-amber-950 px-2.5 py-1.5 text-xs font-medium text-amber-300">
+          {summary.needsReviewCount} bet{summary.needsReviewCount === 1 ? "" : "s"} already
+          final — scroll down to confirm the result.
         </p>
       )}
     </div>
