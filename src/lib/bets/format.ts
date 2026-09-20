@@ -2,6 +2,22 @@ export function formatOdds(odds: number): string {
   return odds > 0 ? `+${odds}` : `${odds}`;
 }
 
+const SPORT_EMOJI: Record<string, string> = {
+  nfl: "🏈",
+  ncaaf: "🏈",
+  nba: "🏀",
+  ncaab: "🏀",
+  mlb: "⚾",
+  nhl: "🏒",
+  golf: "⛳",
+  tennis: "🎾",
+  soccer: "⚽",
+};
+
+export function sportEmoji(sport: string): string {
+  return SPORT_EMOJI[sport] ?? "🎲";
+}
+
 // Bookie/screenshot text often arrives as a raw, ALL-CAPS dump (extraction
 // preserves it verbatim rather than guessing at proper casing). Converts
 // to Title Case while leaving short all-caps tokens alone, since those

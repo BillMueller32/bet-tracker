@@ -7,11 +7,17 @@ function SkeletonTile() {
   );
 }
 
-export default function StatsLoading() {
+export default function AnalyticsLoading() {
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 h-5 w-12 rounded bg-neutral-800" />
-      <h1 className="mb-4 text-lg font-semibold text-neutral-100">Stats</h1>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-neutral-100">Analytics</h1>
+        <div className="flex animate-pulse gap-2">
+          <div className="h-9 w-24 rounded-md bg-neutral-800" />
+          <div className="h-9 w-28 rounded-md bg-neutral-800" />
+          <div className="h-9 w-20 rounded-md bg-neutral-800" />
+        </div>
+      </div>
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (

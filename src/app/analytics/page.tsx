@@ -1,13 +1,16 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SPORTS, BET_TYPES } from "@/lib/bets/constants";
 import { overallStats, groupStats, type StatBet, type StatRow } from "@/lib/bets/stats";
+import { timeframeStartDate, type TimeframeKey } from "@/lib/bets/timeseries";
 import {
+  formatOdds,
   formatPercent,
   formatSignedDollars,
   formatStake,
   profitTextClass,
 } from "@/lib/bets/format";
+import { StatTile } from "@/components/stat-tile";
+import { AnalyticsFilters } from "@/components/analytics-filters";
 
 function sportLabel(value: string): string {
   return SPORTS.find((s) => s.value === value)?.label ?? value;
@@ -15,28 +18,6 @@ function sportLabel(value: string): string {
 
 function betTypeLabel(value: string): string {
   return BET_TYPES.find((t) => t.value === value)?.label ?? value;
-}
-
-function StatTile({
-  label,
-  value,
-  valueClass,
-  sub,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-  sub?: string;
-}) {
-  return (
-    <div className="rounded-md border border-neutral-800 bg-neutral-900 p-3">
-      <p className="text-xs text-neutral-400">{label}</p>
-      <p className={`text-lg font-semibold ${valueClass ?? "text-neutral-100"}`}>
-        {value}
-      </p>
-      {sub && <p className="mt-0.5 text-xs text-neutral-400">{sub}</p>}
-    </div>
-  );
 }
 
 function GroupTable({ title, rows }: { title: string; rows: StatRow[] }) {
@@ -82,32 +63,47 @@ function GroupTable({ title, rows }: { title: string; rows: StatRow[] }) {
   );
 }
 
-export default async function StatsPage() {
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sport?: string; betType?: string; tf?: string }>;
+}) {
+  const { sport = "", betType = "", tf = "all" } = await searchParams;
+  const timeframe = tf as TimeframeKey | "all";
+
   const supabase = await createClient();
   const { data: bets, error } = await supabase
     .from("bets")
-    .select("sport, bet_type, status, odds, stake");
+    .select("sport, bet_type, status, odds, stake, placed_at, settled_at");
 
-  const statBets: StatBet[] = bets ?? [];
-  const overall = overallStats(statBets);
-  const bySport = groupStats(statBets, (b) => ({
-    key: b.sport,
-    label: sportLabel(b.sport),
-  }));
-  const byBetType = groupStats(statBets, (b) => ({
+  const allBets: (StatBet & { placed_at: string; settled_at: string | null })[] = bets ?? [];
+
+  const start = timeframe === "all" ? null : timeframeStartDate(timeframe as TimeframeKey);
+  const filtered = allBets.filter((b) => {
+    if (sport && b.sport !== sport) return false;
+    if (betType && b.bet_type !== betType) return false;
+    if (start && new Date(b.settled_at ?? b.placed_at) < start) return false;
+    return true;
+  });
+
+  const overall = overallStats(filtered);
+  const bySport = groupStats(filtered, (b) => ({ key: b.sport, label: sportLabel(b.sport) }));
+  const byBetType = groupStats(filtered, (b) => ({
     key: b.bet_type,
     label: betTypeLabel(b.bet_type),
   }));
 
+  const avgOdds =
+    filtered.length > 0 ? filtered.reduce((sum, b) => sum + b.odds, 0) / filtered.length : null;
+  const avgStake =
+    filtered.length > 0 ? filtered.reduce((sum, b) => sum + b.stake, 0) / filtered.length : null;
+
   return (
-    <div className="mx-auto max-w-2xl">
-      <Link
-        href="/bets"
-        className="mb-4 inline-block text-sm text-neutral-400 hover:text-neutral-200"
-      >
-        ← Back to bets
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold text-neutral-100">Stats</h1>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-neutral-100">Analytics</h1>
+        <AnalyticsFilters sport={sport} betType={betType} timeframe={timeframe} />
+      </div>
 
       {error && (
         <p className="rounded-md border border-red-900 bg-red-950 p-3 text-sm text-red-300">
@@ -115,24 +111,15 @@ export default async function StatsPage() {
         </p>
       )}
 
-      {!error && overall.wins + overall.losses + overall.pushes === 0 && (
+      {!error && filtered.length === 0 && (
         <p className="rounded-md border border-dashed border-neutral-700 p-6 text-center text-sm text-neutral-400">
-          No decided bets yet — stats fill in once some of your bets are
-          won, lost, or pushed.
+          No bets match these filters yet.
         </p>
       )}
 
-      {!error && overall.wins + overall.losses + overall.pushes > 0 && (
+      {!error && filtered.length > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <StatTile
-              label="Record"
-              value={`${overall.wins}-${overall.losses}${overall.pushes > 0 ? `-${overall.pushes}` : ""}`}
-            />
-            <StatTile
-              label="Win rate"
-              value={overall.winRate === null ? "—" : formatPercent(overall.winRate)}
-            />
             <StatTile
               label="Net profit"
               value={formatSignedDollars(overall.profit)}
@@ -144,6 +131,20 @@ export default async function StatsPage() {
               value={overall.roi === null ? "—" : formatPercent(overall.roi)}
               valueClass={overall.roi === null ? undefined : profitTextClass(overall.roi)}
             />
+            <StatTile
+              label="Record"
+              value={`${overall.wins}-${overall.losses}${overall.pushes > 0 ? `-${overall.pushes}` : ""}`}
+            />
+            <StatTile
+              label="Win rate"
+              value={overall.winRate === null ? "—" : formatPercent(overall.winRate)}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <StatTile label="Bets" value={String(filtered.length)} />
+            <StatTile label="Avg odds" value={avgOdds === null ? "—" : formatOdds(Math.round(avgOdds))} />
+            <StatTile label="Avg stake" value={avgStake === null ? "—" : formatStake(avgStake)} />
           </div>
 
           <GroupTable title="By sport" rows={bySport} />
