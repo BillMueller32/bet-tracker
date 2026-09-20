@@ -1,36 +1,52 @@
 import { StatTile } from "@/components/stat-tile";
 import { formatSignedDollars, formatStake, profitTextClass } from "@/lib/bets/format";
-import type { ActionSummary } from "@/lib/bets/action-summary";
+import type { DaySummary } from "@/lib/bets/action-summary";
 
-export function ActionSummaryBar({ summary }: { summary: ActionSummary }) {
-  if (summary.inPlayCount === 0) return null;
+export function ActionSummaryBar({ summary }: { summary: DaySummary }) {
+  const inPlayCount = summary.pendingCount + summary.liveCount + summary.needsReviewCount;
+  if (summary.settledCount === 0 && inPlayCount === 0) return null;
 
   const hasLiveRead = summary.projectedCount > 0;
+  const hasSettled = summary.settledCount > 0;
 
-  const inPlaySubParts: string[] = [];
-  if (summary.liveCount > 0) inPlaySubParts.push(`${summary.liveCount} live`);
-  if (summary.needsReviewCount > 0) inPlaySubParts.push(`${summary.needsReviewCount} final`);
-  const inPlaySub = inPlaySubParts.length > 0 ? inPlaySubParts.join(" · ") : "not started yet";
+  const netSub = hasLiveRead
+    ? `settled ${formatSignedDollars(summary.settledProfit)} · live ${formatSignedDollars(summary.liveProjected)}`
+    : hasSettled
+      ? "settled today"
+      : "nothing settled yet";
+
+  const statusParts: string[] = [];
+  if (summary.liveCount > 0) statusParts.push(`${summary.liveCount} live`);
+  if (summary.pendingCount > 0) statusParts.push(`${summary.pendingCount} not started`);
+  if (summary.needsReviewCount > 0) statusParts.push(`${summary.needsReviewCount} needs review`);
 
   return (
     <div className="mb-4 space-y-1.5">
+      <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">Today</p>
       <div className="grid grid-cols-3 gap-2">
-        <StatTile label="In play" value={String(summary.inPlayCount)} sub={inPlaySub} />
+        <StatTile
+          label="Net P&L"
+          value={formatSignedDollars(summary.netProfit)}
+          valueClass={profitTextClass(summary.netProfit)}
+          sub={netSub}
+        />
+        <StatTile
+          label="Record"
+          value={`${summary.wins}-${summary.losses}${summary.pushes > 0 ? `-${summary.pushes}` : ""}`}
+          sub="settled today"
+        />
         <StatTile
           label="At risk"
           value={formatStake(summary.atRisk)}
-          sub={`returns up to ${formatStake(summary.potentialPayout)}`}
-        />
-        <StatTile
-          label="Live P/L"
-          value={hasLiveRead ? formatSignedDollars(summary.projected) : "—"}
-          valueClass={hasLiveRead ? profitTextClass(summary.projected) : undefined}
-          sub={hasLiveRead ? "from current scores" : "no live games yet"}
+          sub={inPlayCount > 0 ? `returns up to ${formatStake(summary.potentialPayout)}` : "nothing in play"}
         />
       </div>
+      {statusParts.length > 0 && (
+        <p className="text-xs text-neutral-400">{statusParts.join(" · ")}</p>
+      )}
       {hasLiveRead && (
         <p className="text-xs text-neutral-400">
-          Live P/L is an estimate based on current scores, not a final result.
+          The live portion is an estimate based on current scores, not a final result.
         </p>
       )}
       {summary.needsReviewCount > 0 && (

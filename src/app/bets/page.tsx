@@ -9,7 +9,7 @@ import {
 } from "@/lib/sports/live-status";
 import type { EspnEvent } from "@/lib/sports/espn";
 import { combineLegOutcomes, gradeLeg, gradeSingleBet } from "@/lib/bets/grade";
-import { computeActionSummary } from "@/lib/bets/action-summary";
+import { computeDaySummary } from "@/lib/bets/action-summary";
 
 const ACTIVE_STATUSES = new Set(["pending", "live"]);
 
@@ -123,7 +123,7 @@ export default async function BetsPage() {
   if (bets) await gradePendingBets(supabase, bets, liveStatuses);
 
   const sortedBets = bets ? sortBets(bets) : [];
-  const summary = bets ? computeActionSummary(bets, liveStatuses) : null;
+  const summary = bets ? computeDaySummary(bets, liveStatuses) : null;
 
   return (
     <div className="mx-auto max-w-2xl">
