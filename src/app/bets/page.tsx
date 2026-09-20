@@ -124,8 +124,16 @@ export default async function BetsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-neutral-100">Your bets</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold text-neutral-100">Your bets</h1>
+          <Link
+            href="/bets/stats"
+            className="text-sm text-neutral-400 hover:text-neutral-200"
+          >
+            Stats
+          </Link>
+        </div>
         <div className="flex gap-2">
           <Link
             href="/bets/new/screenshot"
