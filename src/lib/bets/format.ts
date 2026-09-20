@@ -68,6 +68,17 @@ export function formatStake(stake: number): string {
   return `$${stake.toFixed(2)}`;
 }
 
+const startTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  weekday: "short",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+export function formatStartTime(iso: string): string {
+  return startTimeFormatter.format(new Date(iso));
+}
+
 export function formatSignedDollars(value: number): string {
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
   return `${sign}$${Math.abs(value).toFixed(2)}`;

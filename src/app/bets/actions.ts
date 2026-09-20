@@ -135,6 +135,29 @@ export async function updateBet(id: string, formData: FormData) {
   redirect("/bets");
 }
 
+const QUICK_SETTLE_STATUSES = new Set(["won", "lost", "push", "cancelled"]);
+
+// One-tap settle from the bet list — a lighter path than the full edit
+// form for the common case (a straight win/loss/push/void with no
+// cash-out or boost to record). Anything needing actual_profit or
+// cash_out_amount still goes through the edit form.
+export async function setBetStatus(id: string, status: string) {
+  if (!QUICK_SETTLE_STATUSES.has(status)) {
+    throw new Error(`Not a valid quick-settle status: ${status}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bets")
+    .update({ status, settled_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/bets");
+  revalidatePath("/dashboard");
+  revalidatePath("/analytics");
+}
+
 export async function deleteBet(id: string) {
   const supabase = await createClient();
 

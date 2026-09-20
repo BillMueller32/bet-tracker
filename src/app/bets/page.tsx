@@ -9,14 +9,27 @@ import {
 } from "@/lib/sports/live-status";
 import { computeDaySummary } from "@/lib/bets/action-summary";
 import { gradePendingBets } from "@/lib/bets/grading";
+import { betStartTime } from "@/components/bet-card";
 
 const ACTIVE_STATUSES = new Set(["pending", "live"]);
 
+// Open bets sort by when their game(s) actually start — soonest first,
+// so what's coming up next (or already live) surfaces at the top;
+// unlinked open bets with no start time sort last within that group.
+// Settled/cancelled bets keep sorting by placed_at, most recent first.
 function sortBets(bets: Bet[]): Bet[] {
   return [...bets].sort((a, b) => {
     const aActive = ACTIVE_STATUSES.has(a.status);
     const bActive = ACTIVE_STATUSES.has(b.status);
     if (aActive !== bActive) return aActive ? -1 : 1;
+
+    if (aActive && bActive) {
+      const aStart = betStartTime(a);
+      const bStart = betStartTime(b);
+      if (aStart && bStart) return new Date(aStart).getTime() - new Date(bStart).getTime();
+      if (aStart !== bStart) return aStart ? -1 : 1;
+    }
+
     return (
       new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
     );
