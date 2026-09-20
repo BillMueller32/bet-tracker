@@ -30,11 +30,11 @@ function StatTile({
 }) {
   return (
     <div className="rounded-md border border-neutral-800 bg-neutral-900 p-3">
-      <p className="text-xs text-neutral-500">{label}</p>
+      <p className="text-xs text-neutral-400">{label}</p>
       <p className={`text-lg font-semibold ${valueClass ?? "text-neutral-100"}`}>
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-xs text-neutral-500">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs text-neutral-400">{sub}</p>}
     </div>
   );
 }
@@ -46,12 +46,12 @@ function GroupTable({ title, rows }: { title: string; rows: StatRow[] }) {
     <div>
       <h2 className="mb-2 text-sm font-semibold text-neutral-200">{title}</h2>
       {decidedRows.length === 0 ? (
-        <p className="text-sm text-neutral-500">No decided bets yet.</p>
+        <p className="text-sm text-neutral-400">No decided bets yet.</p>
       ) : (
         <div className="overflow-hidden rounded-md border border-neutral-800">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-800 text-left text-xs text-neutral-500">
+              <tr className="border-b border-neutral-800 text-left text-xs text-neutral-400">
                 <th className="px-3 py-2 font-medium">Group</th>
                 <th className="px-3 py-2 font-medium">Record</th>
                 <th className="px-3 py-2 font-medium">Win %</th>
@@ -150,7 +150,7 @@ export default async function StatsPage() {
           <GroupTable title="By bet type" rows={byBetType} />
 
           {overall.pending > 0 && (
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-neutral-400">
               {overall.pending} bet{overall.pending === 1 ? "" : "s"} still
               pending — not included above.
             </p>

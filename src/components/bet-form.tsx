@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   BET_TYPES,
   BET_TYPES_BY_SPORT,
@@ -34,11 +35,34 @@ type BetFormProps = {
   defaultValues?: Partial<Bet>;
   showStatus?: boolean;
   children?: React.ReactNode;
+  // For the onSubmit (client-controlled) path, where native form pending
+  // state isn't tracked automatically — the caller owns this state.
+  submitting?: boolean;
 };
 
 const inputClass =
-  "w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none";
+  "w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-3 text-base text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400";
 const labelClass = "mb-1 block text-xs font-medium text-neutral-400";
+
+function SubmitButton({
+  label,
+  pendingOverride,
+}: {
+  label: string;
+  pendingOverride?: boolean;
+}) {
+  const { pending: formPending } = useFormStatus();
+  const pending = pendingOverride ?? formPending;
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-md bg-neutral-100 px-3 py-3 text-base font-medium text-neutral-900 disabled:opacity-60"
+    >
+      {pending ? "Saving…" : label}
+    </button>
+  );
+}
 
 export function BetForm({
   action,
@@ -47,6 +71,7 @@ export function BetForm({
   defaultValues,
   showStatus,
   children,
+  submitting,
 }: BetFormProps) {
   const [sport, setSport] = useState(defaultValues?.sport ?? "");
   const [betType, setBetType] = useState(defaultValues?.bet_type ?? "");
@@ -475,12 +500,7 @@ export function BetForm({
         />
       </div>
 
-      <button
-        type="submit"
-        className="w-full rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900"
-      >
-        {submitLabel}
-      </button>
+      <SubmitButton label={submitLabel} pendingOverride={submitting} />
       {children}
     </form>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { BetForm } from "@/components/bet-form";
+import { DeleteBetButton } from "@/components/delete-bet-button";
 import { updateBet, deleteBet } from "@/app/bets/actions";
 
 export default async function EditBetPage({
@@ -40,14 +41,7 @@ export default async function EditBetPage({
         submitLabel="Save changes"
         showStatus
       />
-      <form action={deleteBetWithId} className="mt-4">
-        <button
-          type="submit"
-          className="text-sm text-red-400 hover:text-red-300"
-        >
-          Delete this bet
-        </button>
-      </form>
+      <DeleteBetButton deleteAction={deleteBetWithId} />
     </div>
   );
 }

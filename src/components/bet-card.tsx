@@ -16,7 +16,7 @@ function GameStatusLine({ event }: { event: EspnEvent }) {
   return (
     <p
       className={`mt-1 flex items-center gap-1.5 text-xs ${
-        isLive ? "text-red-400" : "text-neutral-500"
+        isLive ? "text-red-400" : "text-neutral-400"
       }`}
     >
       {isLive && (
@@ -70,7 +70,7 @@ export function BetCard({
       className="block rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-neutral-700"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
           {isMultiLeg
             ? `${bet.sport} · ${legs.length}-leg ${bet.bet_type}${
                 bet.bet_type === "teaser" && bet.teaser_points

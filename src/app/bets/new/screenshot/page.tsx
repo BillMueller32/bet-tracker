@@ -25,6 +25,7 @@ export default function ScreenshotUploadPage() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Paste a screenshot straight from the clipboard (e.g. a Mac
   // screenshot shortcut, which copies the image without saving a file).
@@ -109,12 +110,15 @@ export default function ScreenshotUploadPage() {
 
   async function handleSaveCurrent(formData: FormData) {
     setSaveError("");
+    setIsSaving(true);
     try {
       formData.set("screenshot_path", queue[index].screenshotPath);
       await createBetFromReview(formData);
       advance();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Couldn't save this bet.");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -165,7 +169,7 @@ export default function ScreenshotUploadPage() {
           />
           <button
             onClick={() => inputRef.current?.click()}
-            className="rounded-md bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-900"
+            className="rounded-md bg-neutral-100 px-4 py-3 text-base font-medium text-neutral-900"
           >
             Choose screenshots
           </button>
@@ -208,11 +212,13 @@ export default function ScreenshotUploadPage() {
             onSubmit={handleSaveCurrent}
             defaultValues={current.extracted}
             submitLabel={index + 1 < queue.length ? "Save & next" : "Save"}
+            submitting={isSaving}
           >
             <button
               type="button"
               onClick={advance}
-              className="w-full text-center text-xs text-neutral-500 hover:text-neutral-300"
+              disabled={isSaving}
+              className="w-full rounded-md py-2 text-center text-xs font-medium text-neutral-400 hover:text-neutral-200 disabled:opacity-60"
             >
               Skip this one
             </button>

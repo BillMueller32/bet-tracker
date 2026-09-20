@@ -129,7 +129,7 @@ export default async function BetsPage() {
           <h1 className="text-lg font-semibold text-neutral-100">Your bets</h1>
           <Link
             href="/bets/stats"
-            className="text-sm text-neutral-400 hover:text-neutral-200"
+            className="rounded-md px-1.5 py-2 text-sm font-medium text-neutral-400 hover:text-neutral-200"
           >
             Stats
           </Link>
@@ -137,13 +137,13 @@ export default async function BetsPage() {
         <div className="flex gap-2">
           <Link
             href="/bets/new/screenshot"
-            className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-100"
+            className="rounded-md border border-neutral-700 px-3 py-2.5 text-sm font-medium text-neutral-100"
           >
             From screenshot
           </Link>
           <Link
             href="/bets/new"
-            className="rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium text-neutral-900"
+            className="rounded-md bg-neutral-100 px-3 py-2.5 text-sm font-medium text-neutral-900"
           >
             Add bet
           </Link>

@@ -66,7 +66,7 @@ export function GamePicker({
 
   if (externalEventId && !isOpen) {
     return (
-      <div className="flex items-center justify-between rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between gap-2 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm">
         <span className="text-neutral-200">
           Linked to a game
           {eventStart &&
@@ -81,7 +81,7 @@ export function GamePicker({
         <button
           type="button"
           onClick={openPicker}
-          className="text-xs text-neutral-400 hover:text-neutral-200"
+          className="shrink-0 rounded-md px-2 py-1.5 text-xs font-medium text-neutral-300 hover:text-neutral-100"
         >
           Change
         </button>
@@ -94,7 +94,7 @@ export function GamePicker({
       <button
         type="button"
         onClick={openPicker}
-        className="text-xs text-neutral-400 hover:text-neutral-200"
+        className="rounded-md py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-200"
       >
         + Link to a game for live status
       </button>
@@ -104,11 +104,11 @@ export function GamePicker({
   return (
     <div className="space-y-2 rounded-md border border-neutral-700 p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => changeDate(shiftDate(date, -1))}
-            className="text-xs text-neutral-400 hover:text-neutral-200"
+            className="rounded-md px-2 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-200"
           >
             ← Prev
           </button>
@@ -116,12 +116,12 @@ export function GamePicker({
             type="date"
             value={date}
             onChange={(e) => changeDate(e.target.value)}
-            className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100"
+            className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-100"
           />
           <button
             type="button"
             onClick={() => changeDate(shiftDate(date, 1))}
-            className="text-xs text-neutral-400 hover:text-neutral-200"
+            className="rounded-md px-2 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-200"
           >
             Next →
           </button>
@@ -132,20 +132,20 @@ export function GamePicker({
             setIsOpen(false);
             if (externalEventId) onClear();
           }}
-          className="text-xs text-neutral-500 hover:text-neutral-300"
+          className="rounded-md px-2 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-300"
         >
           {externalEventId ? "Unlink" : "Cancel"}
         </button>
       </div>
 
       {status === "loading" && (
-        <p className="text-xs text-neutral-500">Loading games...</p>
+        <p className="text-xs text-neutral-400">Loading games...</p>
       )}
       {status === "error" && (
         <p className="text-xs text-red-400">{errorMessage}</p>
       )}
       {status === "idle" && results.length === 0 && (
-        <p className="text-xs text-neutral-500">No games found for this date.</p>
+        <p className="text-xs text-neutral-400">No games found for this date.</p>
       )}
 
       <div className="max-h-48 space-y-1 overflow-y-auto">
@@ -157,10 +157,10 @@ export function GamePicker({
               onSelect(event);
               setIsOpen(false);
             }}
-            className="block w-full rounded-md border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-left text-xs text-neutral-200 hover:border-neutral-600"
+            className="block w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-left text-sm text-neutral-200 hover:border-neutral-600"
           >
             {event.shortName || event.name}
-            <span className="ml-2 text-neutral-500">
+            <span className="ml-2 text-neutral-400">
               {new Date(event.date).toLocaleTimeString(undefined, {
                 hour: "numeric",
                 minute: "2-digit",
