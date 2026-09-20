@@ -30,6 +30,18 @@ export function BetCard({
     ? liveStatuses?.get(bet.external_event_id)
     : undefined;
 
+  const isUnsettled = bet.status === "pending" || bet.status === "live";
+  const allGamesFinal = isMultiLeg
+    ? legs.length > 0 &&
+      legs.every((leg) => {
+        const g = leg.external_event_id
+          ? liveStatuses?.get(leg.external_event_id)
+          : undefined;
+        return g?.status.state === "post";
+      })
+    : topGame?.status.state === "post";
+  const needsReview = isUnsettled && allGamesFinal;
+
   return (
     <Link
       href={`/bets/${bet.id}/edit`}
@@ -88,6 +100,13 @@ export function BetCard({
         <span>{formatOdds(bet.odds)}</span>
         <span>{formatStake(bet.stake)} stake</span>
       </div>
+
+      {needsReview && (
+        <p className="mt-2 rounded-md bg-amber-950 px-2 py-1 text-xs text-amber-300">
+          Game{isMultiLeg && legs.length > 1 ? "s" : ""} final — tap to set
+          the result
+        </p>
+      )}
     </Link>
   );
 }

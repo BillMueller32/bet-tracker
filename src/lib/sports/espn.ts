@@ -113,8 +113,33 @@ export async function searchEspnEvents(
   });
 }
 
-function normalize(value: string): string {
+export function normalize(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function nameHits(names: string[], hint: string): boolean {
+  return names.some((n) => n && (n.includes(hint) || hint.includes(n)));
+}
+
+// Which side of the matchup a team hint refers to, if it clearly matches
+// one — used for grading, where guessing wrong would misgrade a bet. A
+// hint that doesn't match either team (e.g. a player's name) returns
+// null rather than a guess.
+export function sideOfEvent(
+  event: EspnEvent,
+  hint: string,
+): "home" | "away" | null {
+  const n = normalize(hint);
+  if (!n) return null;
+
+  const homeNorm = event.homeNames.map(normalize);
+  const awayNorm = event.awayNames.map(normalize);
+  const isHome = nameHits(homeNorm, n);
+  const isAway = nameHits(awayNorm, n);
+
+  if (isHome && !isAway) return "home";
+  if (isAway && !isHome) return "away";
+  return null;
 }
 
 // Best-effort match against whatever team/player text an AI extraction or
