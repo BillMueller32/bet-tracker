@@ -103,9 +103,9 @@ export function overallStats(bets: StatBet[]): StatRow {
   return finalize(row);
 }
 
-export function groupStats(
-  bets: StatBet[],
-  keyFn: (bet: StatBet) => { key: string; label: string },
+export function groupStats<T extends StatBet>(
+  bets: T[],
+  keyFn: (bet: T) => { key: string; label: string },
 ): StatRow[] {
   const rows = new Map<string, StatRow>();
   for (const bet of bets) {
