@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { SPORTS, BET_TYPES } from "@/lib/bets/constants";
+import { SPORTS, BET_TYPES, type Bet } from "@/lib/bets/constants";
 import { overallStats, groupStats, type StatBet, type StatRow } from "@/lib/bets/stats";
 import { timeframeStartDate, type TimeframeKey } from "@/lib/bets/timeseries";
+import { gradePendingBets } from "@/lib/bets/grading";
+import {
+  collectLiveStatusRequests,
+  fetchLiveStatuses,
+} from "@/lib/sports/live-status";
 import {
   formatOdds,
   formatPercent,
@@ -74,7 +79,14 @@ export default async function AnalyticsPage({
   const supabase = await createClient();
   const { data: bets, error } = await supabase
     .from("bets")
-    .select("sport, bet_type, status, odds, stake, placed_at, settled_at");
+    .select("*, bet_legs(*)");
+
+  if (bets) {
+    const liveStatuses = await fetchLiveStatuses(
+      collectLiveStatusRequests(bets as Bet[]),
+    );
+    await gradePendingBets(supabase, bets as Bet[], liveStatuses);
+  }
 
   const allBets: (StatBet & { placed_at: string; settled_at: string | null })[] = bets ?? [];
 

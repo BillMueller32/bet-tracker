@@ -4,12 +4,11 @@ import { BetsList } from "@/components/bets-list";
 import { ActionSummaryBar } from "@/components/action-summary-bar";
 import type { Bet } from "@/lib/bets/constants";
 import {
+  collectLiveStatusRequests,
   fetchLiveStatuses,
-  type LiveStatusRequest,
 } from "@/lib/sports/live-status";
-import type { EspnEvent } from "@/lib/sports/espn";
-import { combineLegOutcomes, gradeLeg, gradeSingleBet } from "@/lib/bets/grade";
 import { computeDaySummary } from "@/lib/bets/action-summary";
+import { gradePendingBets } from "@/lib/bets/grading";
 
 const ACTIVE_STATUSES = new Set(["pending", "live"]);
 
@@ -22,91 +21,6 @@ function sortBets(bets: Bet[]): Bet[] {
       new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
     );
   });
-}
-
-function collectLiveStatusRequests(bets: Bet[]): LiveStatusRequest[] {
-  const requests: LiveStatusRequest[] = [];
-
-  for (const bet of bets) {
-    if (!ACTIVE_STATUSES.has(bet.status)) continue;
-
-    const legs = bet.bet_legs ?? [];
-    if (legs.length > 0) {
-      for (const leg of legs) {
-        if (leg.external_event_id && leg.event_start) {
-          requests.push({
-            sport: leg.sport,
-            eventDate: leg.event_start.slice(0, 10),
-            externalEventId: leg.external_event_id,
-          });
-        }
-      }
-    } else if (bet.external_event_id && bet.event_start) {
-      requests.push({
-        sport: bet.sport,
-        eventDate: bet.event_start.slice(0, 10),
-        externalEventId: bet.external_event_id,
-      });
-    }
-  }
-
-  return requests;
-}
-
-// Settles bets whose linked game(s) have gone final, mutating each bet's
-// status/result_value in place and persisting the same to Supabase.
-// Mechanical bet types (moneyline/spread/total) grade automatically;
-// anything grade*() can't confidently resolve (props, a push, a leg
-// whose game isn't final yet) is left as-is for manual review.
-async function gradePendingBets(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  bets: Bet[],
-  liveStatuses: Map<string, EspnEvent>,
-): Promise<void> {
-  for (const bet of bets) {
-    if (!ACTIVE_STATUSES.has(bet.status)) continue;
-
-    const legs = bet.bet_legs ?? [];
-    let outcome: "won" | "lost" | "push" | null = null;
-    let detail = "";
-
-    if (legs.length > 0) {
-      const legResults = legs.map((leg) => {
-        const event = leg.external_event_id
-          ? liveStatuses.get(leg.external_event_id)
-          : undefined;
-        return event ? gradeLeg(leg, event) : null;
-      });
-      outcome = combineLegOutcomes(legResults.map((r) => r?.outcome ?? null));
-      detail = legResults
-        .map((r) => r?.detail)
-        .filter((d): d is string => !!d)
-        .join(" | ");
-    } else if (bet.external_event_id) {
-      const event = liveStatuses.get(bet.external_event_id);
-      if (event) {
-        const result = gradeSingleBet(bet, event);
-        outcome = result?.outcome ?? null;
-        detail = result?.detail ?? "";
-      }
-    }
-
-    if (!outcome) continue;
-
-    const { error } = await supabase
-      .from("bets")
-      .update({
-        status: outcome,
-        result_value: detail || null,
-        settled_at: new Date().toISOString(),
-      })
-      .eq("id", bet.id);
-
-    if (!error) {
-      bet.status = outcome;
-      bet.result_value = detail || null;
-    }
-  }
 }
 
 export default async function BetsPage() {

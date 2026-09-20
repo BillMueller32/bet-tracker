@@ -1,4 +1,5 @@
-import { americanProfit } from "@/lib/bets/stats";
+import { betProfit } from "@/lib/bets/stats";
+import { localDayKey } from "@/lib/bets/time";
 
 export type TimeframeKey = "7d" | "30d" | "90d" | "season" | "all";
 
@@ -38,16 +39,11 @@ type SettleableBet = {
   stake: number;
   placed_at: string;
   settled_at: string | null;
+  actual_profit?: number | null;
 };
 
 function betDate(bet: SettleableBet): string {
-  return (bet.settled_at ?? bet.placed_at).slice(0, 10);
-}
-
-function betProfit(bet: SettleableBet): number {
-  if (bet.status === "won") return americanProfit(bet.odds, bet.stake);
-  if (bet.status === "lost") return -bet.stake;
-  return 0;
+  return localDayKey(bet.settled_at ?? bet.placed_at);
 }
 
 export type PLPoint = { date: string; profit: number; cumulative: number };

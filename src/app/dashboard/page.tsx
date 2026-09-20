@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { Bet } from "@/lib/bets/constants";
 import { groupStats, overallStats } from "@/lib/bets/stats";
 import { currentStreak } from "@/lib/bets/timeseries";
+import { gradePendingBets } from "@/lib/bets/grading";
+import {
+  collectLiveStatusRequests,
+  fetchLiveStatuses,
+} from "@/lib/sports/live-status";
 import {
   formatPercent,
   formatSignedDollars,
@@ -19,6 +24,13 @@ export default async function DashboardPage() {
     .from("bets")
     .select("*, bet_legs(*)")
     .order("placed_at", { ascending: false });
+
+  if (bets) {
+    const liveStatuses = await fetchLiveStatuses(
+      collectLiveStatusRequests(bets),
+    );
+    await gradePendingBets(supabase, bets, liveStatuses);
+  }
 
   const allBets: Bet[] = bets ?? [];
   const overall = overallStats(allBets);

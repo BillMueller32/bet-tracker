@@ -4,6 +4,7 @@ export type StatBet = {
   status: string;
   odds: number;
   stake: number;
+  actual_profit?: number | null;
 };
 
 export type StatRow = {
@@ -23,6 +24,25 @@ export type StatRow = {
 
 export function americanProfit(odds: number, stake: number): number {
   return odds > 0 ? stake * (odds / 100) : stake * (100 / Math.abs(odds));
+}
+
+// Single source of truth for "what did this bet actually profit" —
+// every other module (action summary, insights, timeseries, this file)
+// should compute profit through this, never by re-deriving from odds and
+// stake on its own, so a payout override only ever needs to be honored
+// in one place.
+export function betProfit(bet: {
+  status: string;
+  odds: number;
+  stake: number;
+  actual_profit?: number | null;
+}): number {
+  if (bet.actual_profit !== null && bet.actual_profit !== undefined) {
+    return bet.actual_profit;
+  }
+  if (bet.status === "won") return americanProfit(bet.odds, bet.stake);
+  if (bet.status === "lost") return -bet.stake;
+  return 0;
 }
 
 function emptyRow(key: string, label: string): StatRow {
@@ -48,16 +68,17 @@ function accumulate(row: StatRow, bet: StatBet) {
     case "won":
       row.wins++;
       row.staked += bet.stake;
-      row.profit += americanProfit(bet.odds, bet.stake);
+      row.profit += betProfit(bet);
       break;
     case "lost":
       row.losses++;
       row.staked += bet.stake;
-      row.profit -= bet.stake;
+      row.profit += betProfit(bet);
       break;
     case "push":
       row.pushes++;
       row.staked += bet.stake;
+      row.profit += betProfit(bet);
       break;
     case "cancelled":
       row.cancelled++;
