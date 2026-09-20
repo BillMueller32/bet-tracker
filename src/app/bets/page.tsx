@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { BetCard } from "@/components/bet-card";
+import { BetsList } from "@/components/bets-list";
 import { ActionSummaryBar } from "@/components/action-summary-bar";
 import type { Bet } from "@/lib/bets/constants";
 import {
@@ -160,13 +160,7 @@ export default async function BetsPage() {
       )}
 
       {!error && sortedBets.length > 0 && (
-        <ul className="space-y-3">
-          {sortedBets.map((bet) => (
-            <li key={bet.id}>
-              <BetCard bet={bet} liveStatuses={liveStatuses} />
-            </li>
-          ))}
-        </ul>
+        <BetsList bets={sortedBets} liveStatuses={liveStatuses} />
       )}
     </div>
   );

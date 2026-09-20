@@ -56,6 +56,19 @@ export function allLinkedGamesFinal(bet: Bet, liveStatuses: Map<string, EspnEven
   return events.length > 0 && events.every((e) => e?.status.state === "post");
 }
 
+export type BetBucket = "final" | "needsReview" | "live" | "pending";
+
+// Single source of truth for "what state is this bet in" — used by the
+// list's filter tabs and by the day summary's counts alike, so a bet
+// never lands in a different bucket depending on which UI is asking.
+export function classifyBet(bet: Bet, liveStatuses: Map<string, EspnEvent>): BetBucket {
+  if (SETTLED_STATUSES.has(bet.status) || bet.status === "cancelled") return "final";
+  if (allLinkedGamesFinal(bet, liveStatuses)) return "needsReview";
+  const events = betEvents(bet, liveStatuses);
+  if (events.some((e) => e?.status.state === "in")) return "live";
+  return "pending";
+}
+
 // The calendar date(s) a bet belongs to — each leg's own game date for a
 // parlay/teaser (so a bet only counts as "today" if today is one of its
 // games), or the single game date otherwise. Falls back to when the bet
@@ -127,13 +140,10 @@ export function computeDaySummary(
     const isMultiLeg = MULTI_LEG_BET_TYPES.includes(bet.bet_type) && legs.length > 0;
     const events = betEvents(bet, liveStatuses);
 
-    if (allLinkedGamesFinal(bet, liveStatuses)) {
-      needsReviewCount++;
-    } else if (events.some((e) => e?.status.state === "in")) {
-      liveCount++;
-    } else {
-      pendingCount++;
-    }
+    const bucket = classifyBet(bet, liveStatuses);
+    if (bucket === "needsReview") needsReviewCount++;
+    else if (bucket === "live") liveCount++;
+    else pendingCount++;
 
     let outcome: "won" | "lost" | "push" | null;
     if (isMultiLeg) {
