@@ -7,6 +7,7 @@ import {
   formatOdds,
   formatStake,
   formatStartTime,
+  legOutcomeTextClass,
   statusBadgeClass,
 } from "@/lib/bets/format";
 import { allLinkedGamesFinal } from "@/lib/bets/action-summary";
@@ -136,13 +137,14 @@ export function BetCard({
               const legGame = leg.external_event_id
                 ? liveStatuses?.get(leg.external_event_id)
                 : undefined;
+              const outcome = isUnsettled ? legOutcome(leg, legGame) : null;
               return (
                 <li key={leg.id ?? i} className="py-2 first:pt-0 last:pb-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-neutral-200">
+                    <p className={`text-sm ${legOutcomeTextClass(outcome)}`}>
                       {displayPick(leg.participant, leg.selection)}
                     </p>
-                    {isUnsettled && <HittingBadge outcome={legOutcome(leg, legGame)} />}
+                    <HittingBadge outcome={outcome} />
                   </div>
                   {legGame && <GameStatusLine event={legGame} />}
                 </li>
@@ -152,10 +154,10 @@ export function BetCard({
         ) : (
           <>
             <div className="mt-1 flex items-center justify-between gap-2">
-              <p className="text-sm text-neutral-300">
+              <p className={`text-sm ${legOutcomeTextClass(singleOutcome)}`}>
                 {displayPick(bet.participant, bet.selection)}
               </p>
-              {isUnsettled && <HittingBadge outcome={singleOutcome} />}
+              <HittingBadge outcome={singleOutcome} />
             </div>
             {topGame && <GameStatusLine event={topGame} />}
           </>
