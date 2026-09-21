@@ -15,6 +15,19 @@ import {
 import { GamePicker } from "@/components/game-picker";
 import type { EspnEvent } from "@/lib/sports/espn";
 
+// Not exhaustive, not enforced — sportsbook is free text so a new book
+// never needs a schema change. Just autocomplete convenience.
+const COMMON_SPORTSBOOKS = [
+  "DraftKings",
+  "FanDuel",
+  "BetMGM",
+  "Caesars",
+  "ESPN Bet",
+  "Fanatics",
+  "Bet365",
+  "Bovada",
+];
+
 const EMPTY_LEG: BetLeg = {
   sport: "",
   event_name: "",
@@ -467,24 +480,96 @@ export function BetForm({
         </div>
       </div>
 
-      {showStatus && (
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelClass} htmlFor="status">
-            Status
+          <label className={labelClass} htmlFor="sportsbook">
+            Sportsbook (optional)
           </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={defaultValues?.status ?? "pending"}
+          <input
+            id="sportsbook"
+            name="sportsbook"
+            type="text"
+            list="sportsbook-options"
+            placeholder="DraftKings"
+            defaultValue={defaultValues?.sportsbook ?? ""}
             className={inputClass}
-          >
-            {STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
+          />
+          <datalist id="sportsbook-options">
+            {COMMON_SPORTSBOOKS.map((book) => (
+              <option key={book} value={book} />
             ))}
-          </select>
+          </datalist>
         </div>
+        <div className="flex items-end pb-3">
+          <label className="flex items-center gap-2 text-sm text-neutral-300">
+            <input
+              type="checkbox"
+              name="is_free_bet"
+              defaultChecked={defaultValues?.is_free_bet ?? false}
+              className="h-4 w-4 rounded border-neutral-600 bg-neutral-800"
+            />
+            Free bet
+          </label>
+        </div>
+      </div>
+
+      {showStatus && (
+        <>
+          <div>
+            <label className={labelClass} htmlFor="status">
+              Status
+            </label>
+            <select
+              id="status"
+              name="status"
+              defaultValue={defaultValues?.status ?? "pending"}
+              className={inputClass}
+            >
+              {STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass} htmlFor="cash_out_amount">
+                Cash-out amount ($)
+              </label>
+              <input
+                id="cash_out_amount"
+                name="cash_out_amount"
+                type="number"
+                step="0.01"
+                placeholder="Leave blank if not cashed out"
+                defaultValue={defaultValues?.cash_out_amount ?? ""}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="actual_profit">
+                Actual profit override ($)
+              </label>
+              <input
+                id="actual_profit"
+                name="actual_profit"
+                type="number"
+                step="0.01"
+                placeholder="Leave blank to use odds x stake"
+                defaultValue={defaultValues?.actual_profit ?? ""}
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-neutral-500">
+            Set the override when the book paid out something other than
+            odds × stake — a cash-out, a boosted price, or a parlay settled
+            after a pushed leg. Enter it as profit/loss (negative for a
+            loss), not the total returned.
+          </p>
+        </>
       )}
 
       <div>

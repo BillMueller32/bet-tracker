@@ -1,5 +1,5 @@
 import { SPORTS, BET_TYPES } from "@/lib/bets/constants";
-import { americanProfit } from "@/lib/bets/stats";
+import { betProfit } from "@/lib/bets/stats";
 import { formatPercent, formatSignedDollars, formatStake } from "@/lib/bets/format";
 
 type InsightBet = {
@@ -10,6 +10,7 @@ type InsightBet = {
   stake: number;
   placed_at: string;
   settled_at: string | null;
+  actual_profit?: number | null;
 };
 
 export type Insight = {
@@ -30,12 +31,6 @@ function sportLabel(value: string): string {
 
 function betTypeLabel(value: string): string {
   return BET_TYPES.find((t) => t.value === value)?.label ?? value;
-}
-
-function betProfit(bet: InsightBet): number {
-  if (bet.status === "won") return americanProfit(bet.odds, bet.stake);
-  if (bet.status === "lost") return -bet.stake;
-  return 0;
 }
 
 function sortByDate(bets: InsightBet[]): InsightBet[] {

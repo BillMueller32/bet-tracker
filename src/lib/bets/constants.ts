@@ -106,5 +106,17 @@ export type Bet = {
   // Only meaningful when bet_type is 'teaser': how many points each leg's
   // line was adjusted by (e.g. 6, 7, 10).
   teaser_points?: number | null;
+  sportsbook?: string | null;
+  is_free_bet?: boolean;
+  cash_out_amount?: number | null;
+  // Realized profit override — see migration 0005_bet_extras.sql. When
+  // set, this is what actually happened financially; odds x stake is
+  // only ever a fallback.
+  actual_profit?: number | null;
   bet_legs?: BetLeg[];
+};
+
+export type UserSettings = {
+  bankroll: number | null;
+  unit_size: number | null;
 };

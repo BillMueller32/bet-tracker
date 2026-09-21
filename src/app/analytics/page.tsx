@@ -1,7 +1,19 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { SPORTS, BET_TYPES } from "@/lib/bets/constants";
+import { SPORTS, BET_TYPES, type Bet } from "@/lib/bets/constants";
 import { overallStats, groupStats, type StatBet, type StatRow } from "@/lib/bets/stats";
 import { timeframeStartDate, type TimeframeKey } from "@/lib/bets/timeseries";
+import { gradePendingBets } from "@/lib/bets/grading";
+import {
+  averageOdds,
+  dayOfWeekKey,
+  oddsRangeKey,
+  sortByWeekday,
+} from "@/lib/bets/breakdowns";
+import {
+  collectLiveStatusRequests,
+  fetchLiveStatuses,
+} from "@/lib/sports/live-status";
 import {
   formatOdds,
   formatPercent,
@@ -36,6 +48,7 @@ function GroupTable({ title, rows }: { title: string; rows: StatRow[] }) {
                 <th className="px-3 py-2 font-medium">Group</th>
                 <th className="px-3 py-2 font-medium">Record</th>
                 <th className="px-3 py-2 font-medium">Win %</th>
+                <th className="px-3 py-2 text-right font-medium">ROI</th>
                 <th className="px-3 py-2 text-right font-medium">Profit</th>
               </tr>
             </thead>
@@ -49,6 +62,9 @@ function GroupTable({ title, rows }: { title: string; rows: StatRow[] }) {
                   </td>
                   <td className="px-3 py-2 text-neutral-400">
                     {row.winRate === null ? "—" : formatPercent(row.winRate)}
+                  </td>
+                  <td className={`px-3 py-2 text-right ${row.roi === null ? "text-neutral-400" : profitTextClass(row.roi)}`}>
+                    {row.roi === null ? "—" : formatPercent(row.roi)}
                   </td>
                   <td className={`px-3 py-2 text-right ${profitTextClass(row.profit)}`}>
                     {formatSignedDollars(row.profit)}
@@ -74,7 +90,14 @@ export default async function AnalyticsPage({
   const supabase = await createClient();
   const { data: bets, error } = await supabase
     .from("bets")
-    .select("sport, bet_type, status, odds, stake, placed_at, settled_at");
+    .select("*, bet_legs(*)");
+
+  if (bets) {
+    const liveStatuses = await fetchLiveStatuses(
+      collectLiveStatusRequests(bets as Bet[]),
+    );
+    await gradePendingBets(supabase, bets as Bet[], liveStatuses);
+  }
 
   const allBets: (StatBet & { placed_at: string; settled_at: string | null })[] = bets ?? [];
 
@@ -92,9 +115,12 @@ export default async function AnalyticsPage({
     key: b.bet_type,
     label: betTypeLabel(b.bet_type),
   }));
+  const byOddsRange = groupStats(filtered, (b) => oddsRangeKey(b.odds));
+  const byDayOfWeek = sortByWeekday(
+    groupStats(filtered, (b) => dayOfWeekKey(b.settled_at ?? b.placed_at)),
+  );
 
-  const avgOdds =
-    filtered.length > 0 ? filtered.reduce((sum, b) => sum + b.odds, 0) / filtered.length : null;
+  const avgOdds = averageOdds(filtered.map((b) => b.odds));
   const avgStake =
     filtered.length > 0 ? filtered.reduce((sum, b) => sum + b.stake, 0) / filtered.length : null;
 
@@ -143,12 +169,14 @@ export default async function AnalyticsPage({
 
           <div className="grid grid-cols-3 gap-2">
             <StatTile label="Bets" value={String(filtered.length)} />
-            <StatTile label="Avg odds" value={avgOdds === null ? "—" : formatOdds(Math.round(avgOdds))} />
+            <StatTile label="Avg odds" value={avgOdds === null ? "—" : formatOdds(avgOdds)} />
             <StatTile label="Avg stake" value={avgStake === null ? "—" : formatStake(avgStake)} />
           </div>
 
           <GroupTable title="By sport" rows={bySport} />
           <GroupTable title="By bet type" rows={byBetType} />
+          <GroupTable title="By odds range" rows={byOddsRange} />
+          <GroupTable title="By day of week" rows={byDayOfWeek} />
 
           {overall.pending > 0 && (
             <p className="text-xs text-neutral-400">
@@ -156,6 +184,13 @@ export default async function AnalyticsPage({
               pending — not included above.
             </p>
           )}
+
+          <Link
+            href="/api/bets/export"
+            className="block rounded-md border border-neutral-700 px-3 py-2.5 text-center text-sm font-medium text-neutral-100"
+          >
+            Export all bets to CSV
+          </Link>
         </div>
       )}
     </div>

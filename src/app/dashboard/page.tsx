@@ -3,6 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import type { Bet } from "@/lib/bets/constants";
 import { groupStats, overallStats } from "@/lib/bets/stats";
 import { currentStreak } from "@/lib/bets/timeseries";
+import { gradePendingBets } from "@/lib/bets/grading";
+import { computeOpenAction } from "@/lib/bets/open-action";
+import {
+  collectLiveStatusRequests,
+  fetchLiveStatuses,
+} from "@/lib/sports/live-status";
 import {
   formatPercent,
   formatSignedDollars,
@@ -12,19 +18,38 @@ import { StatTile } from "@/components/stat-tile";
 import { PLChart } from "@/components/pl-chart";
 import { SportBreakdown } from "@/components/sport-breakdown";
 import { BetFeedItem } from "@/components/bet-feed-item";
+import { OpenActionPanel } from "@/components/open-action-panel";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: bets, error } = await supabase
-    .from("bets")
-    .select("*, bet_legs(*)")
-    .order("placed_at", { ascending: false });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const [{ data: bets, error }, { data: settings }] = await Promise.all([
+    supabase
+      .from("bets")
+      .select("*, bet_legs(*)")
+      .order("placed_at", { ascending: false }),
+    user
+      ? supabase
+          .from("user_settings")
+          .select("bankroll")
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const liveStatuses = bets
+    ? await fetchLiveStatuses(collectLiveStatusRequests(bets))
+    : new Map();
+  if (bets) await gradePendingBets(supabase, bets, liveStatuses);
 
   const allBets: Bet[] = bets ?? [];
   const overall = overallStats(allBets);
   const streak = currentStreak(allBets);
   const bySport = groupStats(allBets, (b) => ({ key: b.sport, label: b.sport }));
   const recent = allBets.slice(0, 6);
+  const openAction = computeOpenAction(allBets, liveStatuses, settings?.bankroll ?? null);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -53,6 +78,8 @@ export default async function DashboardPage() {
 
       {!error && allBets.length > 0 && (
         <>
+          <OpenActionPanel action={openAction} />
+
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <StatTile
               label="Total profit"

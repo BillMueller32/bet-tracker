@@ -123,22 +123,31 @@ export function previewSingleBetOutcome(
 }
 
 // Parlay/teaser legs have no bet_type of their own, so the type is
-// inferred from what's actually stored. The side-match is a required
-// safety gate, not just a lookup: a leg whose participant doesn't clearly
-// match one of the two real teams (e.g. it names a player instead) is
-// treated as ungradable rather than guessed at, since misreading a
-// player prop as a team total/spread would silently misgrade the bet.
+// inferred from what's actually stored. A team total isn't about either
+// team, so it's graded without a side match — but only when there's no
+// participant attached. A leg's participant is very often left blank
+// for a real team total (there's no team to name), so gating totals on
+// a side match would leave those legs stuck ungraded forever. It's the
+// opposite for a player prop: the participant is almost always filled
+// in (that's the whole point — "Mahomes Over 2.5 passing TDs"), and a
+// player prop can easily say "Over/Under" too. So when a participant
+// *is* given, the side-match safety gate still applies: a leg whose
+// participant doesn't clearly match one of the two real teams (a
+// player's name) is treated as ungradable rather than guessed at, since
+// misreading a player prop as a team total/spread would silently
+// misgrade the bet.
 function computeLegOutcome(leg: GradableFields, event: EspnEvent): GradeOutcome | null {
+  const isOver = /over/i.test(leg.selection);
+  const isUnder = /under/i.test(leg.selection);
+  const isTotal = (isOver || isUnder) && leg.line !== null;
+
+  if (isTotal && !leg.participant) return gradeTotal(isOver, leg.line!, event);
+
   const side = sideOfEvent(event, teamHint(leg));
   if (!side) return null;
 
   if (leg.line === null) return gradeMoneyline(side, event);
-
-  const isOver = /over/i.test(leg.selection);
-  const isUnder = /under/i.test(leg.selection);
-  return isOver || isUnder
-    ? gradeTotal(isOver, leg.line, event)
-    : gradeSpread(side, leg.line, event);
+  return isTotal ? gradeTotal(isOver, leg.line, event) : gradeSpread(side, leg.line, event);
 }
 
 export function gradeLeg(

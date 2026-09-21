@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MULTI_LEG_BET_TYPES, type Bet } from "@/lib/bets/constants";
-import { americanProfit } from "@/lib/bets/stats";
+import { betProfit } from "@/lib/bets/stats";
 import {
   cleanEventName,
   displayPick,
@@ -45,11 +45,9 @@ export function BetFeedItem({ bet }: { bet: Bet }) {
     : `${bet.sport.toUpperCase()} · ${bet.bet_type.replace("_", " ")}`;
 
   const profit =
-    bet.status === "won"
-      ? americanProfit(bet.odds, bet.stake)
-      : bet.status === "lost"
-        ? -bet.stake
-        : null;
+    bet.status === "won" || bet.status === "lost" || bet.status === "push"
+      ? betProfit(bet)
+      : null;
 
   return (
     <Link

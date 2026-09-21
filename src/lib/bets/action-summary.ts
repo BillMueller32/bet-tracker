@@ -1,10 +1,11 @@
 import { MULTI_LEG_BET_TYPES, type Bet } from "@/lib/bets/constants";
-import { americanProfit } from "@/lib/bets/stats";
+import { americanProfit, betProfit } from "@/lib/bets/stats";
 import {
   combineLegOutcomes,
   previewLegOutcome,
   previewSingleBetOutcome,
 } from "@/lib/bets/grade";
+import { localDayKey, todayKey } from "@/lib/bets/time";
 import type { EspnEvent } from "@/lib/sports/espn";
 
 export type DaySummary = {
@@ -69,26 +70,26 @@ export function classifyBet(bet: Bet, liveStatuses: Map<string, EspnEvent>): Bet
   return "pending";
 }
 
-// The calendar date(s) a bet belongs to — each leg's own game date for a
-// parlay/teaser (so a bet only counts as "today" if today is one of its
-// games), or the single game date otherwise. Falls back to when the bet
-// was placed for anything never linked to a real game.
+// The calendar date(s) a bet belongs to, in the app's local timezone —
+// each leg's own game date for a parlay/teaser (so a bet only counts as
+// "today" if today is one of its games), or the single game date
+// otherwise. Falls back to when the bet was placed for anything never
+// linked to a real game.
 function betDayKeys(bet: Bet): string[] {
   const legs = bet.bet_legs ?? [];
   if (MULTI_LEG_BET_TYPES.includes(bet.bet_type) && legs.length > 0) {
-    return legs.map((leg) => (leg.event_start ?? bet.placed_at).slice(0, 10));
+    return legs.map((leg) => localDayKey(leg.event_start ?? bet.placed_at));
   }
-  return [(bet.event_start ?? bet.placed_at).slice(0, 10)];
+  return [localDayKey(bet.event_start ?? bet.placed_at)];
 }
 
+// A live preview only ever cares about won/lost/push, never a payout
+// override — that's a settled-bet concept (what the book actually paid),
+// not something that exists yet for a bet that hasn't settled.
 function outcomeProfit(outcome: "won" | "lost" | "push", bet: Bet): number {
   if (outcome === "won") return americanProfit(bet.odds, bet.stake);
   if (outcome === "lost") return -bet.stake;
   return 0;
-}
-
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 // Summarizes "today's action": real settled results plus a live estimate
@@ -119,15 +120,10 @@ export function computeDaySummary(
   for (const bet of todays) {
     if (SETTLED_STATUSES.has(bet.status)) {
       settledCount++;
-      if (bet.status === "won") {
-        wins++;
-        settledProfit += americanProfit(bet.odds, bet.stake);
-      } else if (bet.status === "lost") {
-        losses++;
-        settledProfit -= bet.stake;
-      } else {
-        pushes++;
-      }
+      if (bet.status === "won") wins++;
+      else if (bet.status === "lost") losses++;
+      else pushes++;
+      settledProfit += betProfit(bet);
       continue;
     }
 
